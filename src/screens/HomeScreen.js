@@ -8,11 +8,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, FontAwesome5 } from '@expo/vector-icons';
 
 const FILTER_OPTIONS = [
   { id: 'all', label: 'All', icon: 'th-large' },
-  { id: 'size', label: 'Size', icon: 'ruler' },
+  { id: 'size', label: 'Size', icon: 'tape' },
   { id: 'style', label: 'Style', icon: 'tag' },
   { id: 'type', label: 'Item Type', icon: 'shopping-bag' },
   { id: 'color', label: 'Color', icon: 'paint-brush' },
@@ -40,14 +40,25 @@ export default function HomeScreen() {
                 selectedFilter === filter.id && styles.selectedFilterTab
               ]}
             >
-              <FontAwesome 
-                name={filter.icon} 
-                size={16} 
-                color={selectedFilter === filter.id ? '#fff' : '#666'} 
-              />
+              {filter.icon && (
+                filter.id === 'size' ? (
+                  <FontAwesome5 
+                    name={filter.icon} 
+                    size={16} 
+                    color={selectedFilter === filter.id ? '#fff' : '#666'} 
+                  />
+                ) : (
+                  <FontAwesome 
+                    name={filter.icon} 
+                    size={16} 
+                    color={selectedFilter === filter.id ? '#fff' : '#666'} 
+                  />
+                )
+              )}
               <Text style={[
                 styles.filterText,
-                selectedFilter === filter.id && styles.selectedFilterText
+                selectedFilter === filter.id && styles.selectedFilterText,
+                !filter.icon && { marginLeft: 0 }
               ]}>
                 {filter.label}
               </Text>

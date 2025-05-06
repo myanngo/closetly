@@ -9,10 +9,12 @@ import * as SplashScreen from 'expo-splash-screen';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
-import UploadScreen from './src/screens/UploadScreen';
+import UploadItemScreen from './src/screens/UploadItemScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import SignupScreen from './src/screens/SignupScreen';
+import AddDetailsScreen from './src/screens/AddDetailsScreen';
+import PreviewItemScreen from './src/screens/PreviewItemScreen';
 
 // Import font loader
 import { loadFonts } from './src/utils/fonts';
@@ -49,7 +51,7 @@ function TabNavigator() {
       <Tab.Screen name="HomeTab" component={HomeScreen} />
       <Tab.Screen 
         name="UploadTab" 
-        component={UploadScreen}
+        component={UploadItemScreen}
         options={{
           tabBarStyle: { display: 'none' },
           tabBarIcon: ({ focused, color, size }) => (
@@ -108,6 +110,8 @@ export default function App() {
               gestureEnabled: false,
             }}
           />
+          <Stack.Screen name="AddDetails" component={AddDetailsScreen} />
+          <Stack.Screen name="PreviewItem" component={PreviewItemScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
