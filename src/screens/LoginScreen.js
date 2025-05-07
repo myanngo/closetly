@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -10,29 +10,29 @@ import {
   Platform,
   TouchableWithoutFeedback,
   Keyboard,
-} from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+} from "react-native";
+import { FontAwesome, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 
 export default function LoginScreen() {
   const navigation = useNavigation();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = () => {
     // TODO: Implement actual login logic
-    navigation.replace('MainTabs');
+    navigation.replace("MainTabs");
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.content}
         >
           <View style={styles.header}>
-            <FontAwesome name="exchange" size={50} color="#ff0000" />
+            <MaterialCommunityIcons name="hanger" size={100} color="#ff0000" />
             <Text style={styles.title}>Closetly</Text>
             <Text style={styles.subtitle}>Swap your style</Text>
           </View>
@@ -58,16 +58,15 @@ export default function LoginScreen() {
               placeholderTextColor="#999"
             />
 
-            <TouchableOpacity 
-              style={styles.loginButton}
-              onPress={handleLogin}
-            >
+            <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
               <Text style={styles.loginButtonText}>Log In</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.forgotPassword}
-              onPress={() => {/* TODO: Implement forgot password */}}
+              onPress={() => {
+                /* TODO: Implement forgot password */
+              }}
             >
               <Text style={styles.forgotPasswordText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -75,7 +74,7 @@ export default function LoginScreen() {
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+            <TouchableOpacity onPress={() => navigation.navigate("Signup")}>
               <Text style={styles.signupText}>Sign up</Text>
             </TouchableOpacity>
           </View>
@@ -88,77 +87,77 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 40,
   },
   title: {
     fontSize: 42,
-    fontWeight: 'normal',
+    fontWeight: "normal",
     marginTop: 10,
-    color: '#ff0000',
-    fontFamily: 'InstrumentSerif-Regular',
+    color: "#ff0000",
+    fontFamily: "InstrumentSerif-Regular",
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginTop: 5,
-    fontFamily: 'CircularStd-Book',
+    fontFamily: "CircularStd-Book",
   },
   form: {
-    width: '100%',
+    width: "100%",
   },
   input: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     padding: 15,
     borderRadius: 10,
     marginBottom: 15,
     fontSize: 16,
-    fontFamily: 'CircularStd-Book',
+    fontFamily: "CircularStd-Book",
   },
   loginButton: {
-    backgroundColor: '#ff0000',
+    backgroundColor: "#ff0000",
     padding: 15,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
   },
   loginButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'CircularStd-Bold',
+    fontWeight: "bold",
+    fontFamily: "CircularStd-Bold",
   },
   forgotPassword: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 15,
   },
   forgotPasswordText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    fontFamily: 'CircularStd-Book',
+    fontFamily: "CircularStd-Book",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: 40,
   },
   footerText: {
-    color: '#666',
+    color: "#666",
     fontSize: 14,
-    fontFamily: 'CircularStd-Book',
+    fontFamily: "CircularStd-Book",
   },
   signupText: {
-    color: '#ff0000',
+    color: "#ff0000",
     fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'CircularStd-Bold',
+    fontWeight: "bold",
+    fontFamily: "CircularStd-Bold",
   },
-}); 
+});

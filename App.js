@@ -1,23 +1,23 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { FontAwesome } from '@expo/vector-icons';
-import * as SplashScreen from 'expo-splash-screen';
+import React, { useState, useCallback, useEffect } from "react";
+import { View, Text } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { FontAwesome5 } from "@expo/vector-icons";
+import * as SplashScreen from "expo-splash-screen";
 
 // Import screens
-import HomeScreen from './src/screens/HomeScreen';
-import UploadItemScreen from './src/screens/UploadItemScreen';
-import ProfileScreen from './src/screens/ProfileScreen';
-import LoginScreen from './src/screens/LoginScreen';
-import SignupScreen from './src/screens/SignupScreen';
-import AddDetailsScreen from './src/screens/AddDetailsScreen';
-import PreviewItemScreen from './src/screens/PreviewItemScreen';
+import HomeScreen from "./src/screens/HomeScreen";
+import UploadItemScreen from "./src/screens/UploadItemScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+import LoginScreen from "./src/screens/LoginScreen";
+import SignupScreen from "./src/screens/SignupScreen";
+import AddDetailsScreen from "./src/screens/AddDetailsScreen";
+import PreviewItemScreen from "./src/screens/PreviewItemScreen";
 
 // Import font loader
-import { loadFonts } from './src/utils/fonts';
+import { loadFonts } from "./src/utils/fonts";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -32,34 +32,44 @@ function TabNavigator() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'HomeTab') {
-            iconName = 'home';
-          } else if (route.name === 'UploadTab') {
-            iconName = 'plus-square';
-          } else if (route.name === 'ProfileTab') {
-            iconName = 'user';
+          if (route.name === "Home") {
+            iconName = "home";
+          } else if (route.name === "Upload") {
+            iconName = "plus";
+          } else if (route.name === "Profile") {
+            iconName = "user-alt";
           }
 
-          return <FontAwesome name={iconName} size={size} color={color} />;
+          return <FontAwesome5 name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#ff0000',
-        tabBarInactiveTintColor: '#666',
-        tabBarShowLabel: false,
+        tabBarActiveTintColor: "#ff0000",
+        tabBarInactiveTintColor: "#B89B5E",
+        tabBarShowLabel: true,
         headerShown: false,
+        tabBarStyle: {
+          backgroundColor: "#FFF9E6",
+          borderTopWidth: 0,
+          elevation: 0,
+          height: 100,
+        },
+        tabBarLabelStyle: {
+          marginTop: 10,
+          fontSize: 12,
+        },
       })}
     >
-      <Tab.Screen name="HomeTab" component={HomeScreen} />
-      <Tab.Screen 
-        name="UploadTab" 
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen
+        name="Upload"
         component={UploadItemScreen}
         options={{
-          tabBarStyle: { display: 'none' },
+          tabBarStyle: { display: "none" },
           tabBarIcon: ({ focused, color, size }) => (
-            <FontAwesome name="plus-square" size={size + 4} color={color} />
+            <FontAwesome5 name="plus" size={size + 4} color={color} />
           ),
         }}
       />
-      <Tab.Screen name="ProfileTab" component={ProfileScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -95,16 +105,16 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
       <NavigationContainer>
-        <Stack.Navigator 
-          screenOptions={{ 
+        <Stack.Navigator
+          screenOptions={{
             headerShown: false,
-            animation: 'none',
+            animation: "none",
           }}
         >
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Signup" component={SignupScreen} />
-          <Stack.Screen 
-            name="MainTabs" 
+          <Stack.Screen
+            name="MainTabs"
             component={TabNavigator}
             options={{
               gestureEnabled: false,

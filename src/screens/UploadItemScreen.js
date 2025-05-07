@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -13,46 +13,92 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Alert,
-} from 'react-native';
-import { FontAwesome, FontAwesome5, Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+  ImageBackground,
+} from "react-native";
+import {
+  FontAwesome,
+  FontAwesome5,
+  Ionicons,
+  MaterialCommunityIcons,
+} from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import * as ImagePicker from "expo-image-picker";
 
 const ITEM_TYPES = [
-  'Shirt', 'Pants', 'Shoes', 'Dress', 'Jacket', 'Skirt', 'Shorts', 
-  'Sweater', 'Hoodie', 'Blazer', 'Coat', 'T-shirt', 'Jeans', 'Suit',
-  'Accessory', 'Bag', 'Hat', 'Scarf', 'Gloves', 'Socks'
+  "Shirt",
+  "Pants",
+  "Shoes",
+  "Dress",
+  "Jacket",
+  "Skirt",
+  "Shorts",
+  "Sweater",
+  "Hoodie",
+  "Blazer",
+  "Coat",
+  "T-shirt",
+  "Jeans",
+  "Suit",
+  "Accessory",
+  "Bag",
+  "Hat",
+  "Scarf",
+  "Gloves",
+  "Socks",
 ];
 
 const SIZES = [
-  'XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL',
-  'US 4', 'US 6', 'US 8', 'US 10', 'US 12', 'US 14', 'US 16',
-  'EU 32', 'EU 34', 'EU 36', 'EU 38', 'EU 40', 'EU 42', 'EU 44',
-  'UK 4', 'UK 6', 'UK 8', 'UK 10', 'UK 12', 'UK 14', 'UK 16'
+  "XXS",
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+  "XXL",
+  "XXXL",
+  "US 4",
+  "US 6",
+  "US 8",
+  "US 10",
+  "US 12",
+  "US 14",
+  "US 16",
 ];
 
 const BRANDS = [
-  'Nike', 'Adidas', 'Zara', 'Uniqlo', 'H&M', 'Gap', 'Levi\'s', 'Gucci',
-  'Louis Vuitton', 'Prada', 'Balenciaga', 'Supreme', 'Off-White',
-  'Ralph Lauren', 'Tommy Hilfiger', 'Calvin Klein', 'Michael Kors',
-  'Coach', 'Kate Spade', 'Forever 21', 'Urban Outfitters', 'ASOS',
-  'Topshop', 'Mango', 'Pull&Bear', 'Bershka', 'Other'
+  "Nike",
+  "Adidas",
+  "Zara",
+  "Brandy Melville",
+  "Uniqlo",
+  "H&M",
+  "Urban Outfitters",
+  "Reformation",
+  "Gap",
+  "Levi's",
+  "Ralph Lauren",
+  "Tommy Hilfiger",
+  "Calvin Klein",
+  "Forever 21",
+  "ASOS",
+  "Supreme",
+  "Other",
 ];
 
 export default function UploadItemScreen() {
   const navigation = useNavigation();
   const [photos, setPhotos] = useState([null, null, null]);
-  const [story, setStory] = useState('');
+  const [story, setStory] = useState("");
   const [pickerIndex, setPickerIndex] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
   // Show action sheet/modal for photo picking
   const showPhotoPicker = (index) => {
     setPickerIndex(index);
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Take Photo', 'Upload from Gallery'],
+          options: ["Cancel", "Take Photo", "Upload from Gallery"],
           cancelButtonIndex: 0,
         },
         async (buttonIndex) => {
@@ -99,26 +145,32 @@ export default function UploadItemScreen() {
   const canProceed = photos.some(Boolean);
 
   const handleClose = () => {
-    Alert.alert(
-      'Are you sure?',
-      'Exiting will delete your post in progress.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', style: 'destructive', onPress: () => navigation.navigate('HomeTab') },
-      ]
-    );
+    Alert.alert("Are you sure?", "Exiting will delete your post in progress.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Exit",
+        style: "destructive",
+        onPress: () => navigation.navigate("HomeTab"),
+      },
+    ]);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.headerRow}>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
               <Ionicons name="chevron-back" size={28} color="#222" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
@@ -127,26 +179,46 @@ export default function UploadItemScreen() {
           </View>
           <Text style={styles.heading}>Upload an item</Text>
           <View style={styles.mainPhotoContainer}>
-            <TouchableOpacity style={styles.mainPhotoBox} onPress={() => showPhotoPicker(0)}>
+            <TouchableOpacity
+              style={styles.mainPhotoBox}
+              onPress={() => showPhotoPicker(0)}
+            >
               {photos[0] ? (
                 <Image source={{ uri: photos[0] }} style={styles.photoImage} />
               ) : (
                 <View style={styles.photoPlaceholder}>
-                  <FontAwesome5 name="female" size={96} color="#bbb" style={{ marginBottom: 10 }} />
-                  <Text style={styles.photoTextMain}>Upload an outfit with this item!</Text>
+                  <Text style={styles.photoTextMain}>
+                    Upload an outfit with this item!
+                  </Text>
+                  <FontAwesome5
+                    name="female"
+                    size={96}
+                    color="#bbb"
+                    style={{ marginBottom: 10 }}
+                  />
                 </View>
               )}
             </TouchableOpacity>
           </View>
           <View style={styles.photoRowSquares}>
-            {[1,2,3].map(i => (
-              <TouchableOpacity key={i} style={styles.photoBoxSmallSquare} onPress={() => showPhotoPicker(i)}>
+            {[1, 2, 3].map((i) => (
+              <TouchableOpacity
+                key={i}
+                style={styles.photoBoxSmallSquare}
+                onPress={() => showPhotoPicker(i)}
+              >
                 {photos[i] ? (
-                  <Image source={{ uri: photos[i] }} style={styles.photoImage} />
+                  <Image
+                    source={{ uri: photos[i] }}
+                    style={styles.photoImage}
+                  />
                 ) : (
                   <View style={styles.photoPlaceholder}>
-                    <FontAwesome5 name="camera" size={36} color="#bbb" />
-                    <FontAwesome5 name="plus" size={18} color="#bbb" style={{ position: 'absolute', right: 10, bottom: 10 }} />
+                    <MaterialCommunityIcons
+                      name="image-plus"
+                      size={36}
+                      color="#bbb"
+                    />
                   </View>
                 )}
               </TouchableOpacity>
@@ -155,15 +227,18 @@ export default function UploadItemScreen() {
           <Text style={styles.storyLabel}>Story</Text>
           <TextInput
             style={styles.storyInput}
-            placeholder="Tell us a bit more about this piece. Where have you worn it? Where'd you get it? What does it mean to you?"
+            placeholder="Tell us a bit more about this piece. Where have you worn it? Where'd you get it? What does it mean to you? Tell a story!"
             placeholderTextColor="#bbb"
             multiline
             value={story}
             onChangeText={setStory}
           />
           <TouchableOpacity
-            style={[styles.nextButton, !canProceed && styles.nextButtonDisabled]}
-            onPress={() => navigation.navigate('AddDetails', { photos, story })}
+            style={[
+              styles.nextButton,
+              !canProceed && styles.nextButtonDisabled,
+            ]}
+            onPress={() => navigation.navigate("AddDetails", { photos, story })}
             disabled={!canProceed}
           >
             <Text style={styles.nextButtonText}>Next</Text>
@@ -176,17 +251,29 @@ export default function UploadItemScreen() {
           animationType="fade"
           onRequestClose={() => setShowModal(false)}
         >
-          <TouchableOpacity style={styles.modalOverlay} onPress={() => setShowModal(false)}>
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            onPress={() => setShowModal(false)}
+          >
             <View style={styles.modalSheet}>
-              <TouchableOpacity style={styles.modalOption} onPress={() => takePhoto(pickerIndex)}>
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={() => takePhoto(pickerIndex)}
+              >
                 <FontAwesome name="camera" size={20} color="#222" />
                 <Text style={styles.modalOptionText}>Take Photo</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalOption} onPress={() => pickImage(pickerIndex)}>
+              <TouchableOpacity
+                style={styles.modalOption}
+                onPress={() => pickImage(pickerIndex)}
+              >
                 <FontAwesome name="image" size={20} color="#222" />
                 <Text style={styles.modalOptionText}>Upload from Gallery</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.modalCancel} onPress={() => setShowModal(false)}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setShowModal(false)}
+              >
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
             </View>
@@ -200,19 +287,19 @@ export default function UploadItemScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
-    position: 'relative',
+    backgroundColor: "#fff",
+    position: "relative",
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 30 : 0,
+    paddingTop: Platform.OS === "android" ? 30 : 0,
     flexGrow: 1,
     paddingBottom: 100,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
   backButton: {
@@ -224,91 +311,100 @@ const styles = StyleSheet.create({
     marginRight: -8,
   },
   heading: {
-    fontFamily: 'InstrumentSerif-Regular',
+    fontFamily: "InstrumentSerif-Regular",
     fontSize: 32,
-    color: '#d00',
-    textAlign: 'center',
+    color: "#d00",
+    textAlign: "center",
     marginBottom: 24,
     marginTop: 8,
   },
   mainPhotoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 16,
   },
   mainPhotoBox: {
-    width: '92%',
+    width: "92%",
     aspectRatio: 1,
-    backgroundColor: '#fdfaf2',
+    backgroundColor: "#fdfaf2",
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    borderWidth: 0,
+    borderColor: "#e0e0e0",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 1, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   photoRowSquares: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: '4%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: "4%",
     marginBottom: 28,
   },
   photoBoxSmallSquare: {
-    width: '30%',
+    width: "30%",
     aspectRatio: 1,
-    backgroundColor: '#fdfaf2',
+    backgroundColor: "#fdfaf2",
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    borderWidth: 0,
+    borderColor: "#ddd",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 1, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
   },
   photoPlaceholder: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 8,
   },
   photoTextMain: {
-    color: '#bbb',
-    fontFamily: 'CircularStd-Book',
+    color: "#bbb",
+    fontFamily: "CircularStd-Book",
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 8,
+    marginBottom: 20,
   },
   photoImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   storyLabel: {
-    fontFamily: 'CircularStd-Bold',
+    fontFamily: "CircularStd-Bold",
     fontSize: 18,
-    color: '#111',
+    color: "#111",
     marginTop: 10,
-    marginBottom: 5,
+    marginBottom: 10,
     marginLeft: 2,
   },
   storyInput: {
     minHeight: 120,
     borderWidth: 2,
-    borderColor: '#bbb',
+    borderColor: "#bbb",
     borderRadius: 8,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 12,
-    fontFamily: 'CircularStd-Book',
+    fontFamily: "CircularStd-Book",
     fontSize: 15,
     marginBottom: 24,
     marginHorizontal: 2,
-    textAlignVertical: 'top',
-    borderStyle: 'dashed',
+    textAlignVertical: "top",
+    borderStyle: "dashed",
   },
   nextButton: {
-    backgroundColor: '#d00',
+    backgroundColor: "#d00",
     borderRadius: 22,
-    position: 'absolute',
+    position: "absolute",
     right: 24,
     bottom: 32,
     paddingHorizontal: 32,
@@ -316,44 +412,44 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   nextButtonDisabled: {
-    backgroundColor: '#eee',
+    backgroundColor: "#eee",
   },
   nextButtonText: {
-    color: '#fff',
-    fontFamily: 'CircularStd-Bold',
+    color: "#fff",
+    fontFamily: "CircularStd-Bold",
     fontSize: 18,
   },
   // Modal styles for Android
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0,0,0,0.2)",
+    justifyContent: "flex-end",
   },
   modalSheet: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 20,
     paddingBottom: 32,
   },
   modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 14,
   },
   modalOptionText: {
-    fontFamily: 'CircularStd-Book',
+    fontFamily: "CircularStd-Book",
     fontSize: 16,
     marginLeft: 12,
-    color: '#222',
+    color: "#222",
   },
   modalCancel: {
     marginTop: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   modalCancelText: {
-    color: '#d00',
-    fontFamily: 'CircularStd-Bold',
+    color: "#d00",
+    fontFamily: "CircularStd-Bold",
     fontSize: 16,
   },
-}); 
+});
