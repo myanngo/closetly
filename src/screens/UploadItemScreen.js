@@ -183,6 +183,9 @@ export default function UploadItemScreen() {
               style={styles.mainPhotoBox}
               onPress={() => showPhotoPicker(0)}
             >
+              {/* Tape effect */}
+              <View style={styles.tapeEffect} />
+
               {photos[0] ? (
                 <Image source={{ uri: photos[0] }} style={styles.photoImage} />
               ) : (
@@ -224,15 +227,19 @@ export default function UploadItemScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
           <Text style={styles.storyLabel}>Story</Text>
-          <TextInput
-            style={styles.storyInput}
-            placeholder="Tell us a bit more about this piece. Where have you worn it? Where'd you get it? What does it mean to you? Tell a story!"
-            placeholderTextColor="#bbb"
-            multiline
-            value={story}
-            onChangeText={setStory}
-          />
+          <View style={styles.postItContainer}>
+            <View style={styles.postItFoldedCorner} />
+            <TextInput
+              style={styles.storyInput}
+              placeholder="Tell us a bit more about this piece. Where have you worn it? Where'd you get it? What does it mean to you? Tell a story!"
+              placeholderTextColor="#adaca1"
+              multiline
+              value={story}
+              onChangeText={setStory}
+            />
+          </View>
           <TouchableOpacity
             style={[
               styles.nextButton,
@@ -326,7 +333,6 @@ const styles = StyleSheet.create({
     width: "92%",
     aspectRatio: 1,
     backgroundColor: "#fdfaf2",
-    borderRadius: 14,
     borderWidth: 0,
     borderColor: "#e0e0e0",
     justifyContent: "center",
@@ -349,7 +355,6 @@ const styles = StyleSheet.create({
     width: "30%",
     aspectRatio: 1,
     backgroundColor: "#fdfaf2",
-    borderRadius: 10,
     borderWidth: 0,
     borderColor: "#ddd",
     justifyContent: "center",
@@ -385,21 +390,44 @@ const styles = StyleSheet.create({
     color: "#111",
     marginTop: 10,
     marginBottom: 10,
-    marginLeft: 2,
+    marginLeft: 10,
   },
   storyInput: {
-    minHeight: 120,
-    borderWidth: 2,
-    borderColor: "#bbb",
-    borderRadius: 8,
-    backgroundColor: "#fff",
-    padding: 12,
+    minHeight: 200,
+    backgroundColor: "#ebeae4", // Post-it yellow
+    padding: 20,
     fontFamily: "CircularStd-Book",
-    fontSize: 15,
+    fontSize: 16,
     marginBottom: 24,
-    marginHorizontal: 2,
+    marginHorizontal: 10,
     textAlignVertical: "top",
-    borderStyle: "dashed",
+    borderWidth: 0,
+    borderRadius: 2,
+    color: "#333",
+  },
+  postItContainer: {
+    position: "relative",
+    marginBottom: 24,
+    transform: [{ rotate: "-1deg" }],
+    shadowColor: "#000",
+    shadowOffset: { width: 3, height: 5 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 8,
+  },
+  postItFoldedCorner: {
+    position: "absolute",
+    bottom: 24,
+    right: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 4,
+    backgroundColor: "transparent",
+    borderBottomWidth: 20,
+    borderBottomColor: "#bfbeb8", // Darker shade for folded corner
+    borderLeftWidth: 20,
+    borderLeftColor: "transparent",
+    zIndex: 1,
   },
   nextButton: {
     backgroundColor: "#d00",
@@ -451,5 +479,21 @@ const styles = StyleSheet.create({
     color: "#d00",
     fontFamily: "CircularStd-Bold",
     fontSize: 16,
+  },
+  tapeEffect: {
+    position: "absolute",
+    top: -15,
+    alignSelf: "center",
+    width: 200,
+    height: 40,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    borderRadius: 3,
+    transform: [{ rotate: "1deg" }],
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 1,
   },
 });
