@@ -6,13 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Image,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import {
   FontAwesome,
   FontAwesome5,
   MaterialCommunityIcons,
+  Ionicons,
 } from "@expo/vector-icons";
+import { postsData } from "../../data/postsDummyData";
 
 const FILTER_OPTIONS = [
   { id: "all", label: "All", icon: "th-large" },
@@ -21,6 +25,10 @@ const FILTER_OPTIONS = [
   { id: "type", label: "Item Type", icon: "shopping-bag" },
   { id: "color", label: "Color", icon: "paint-brush" },
 ];
+
+const { width } = Dimensions.get("window");
+const ITEM_MARGIN = 8;
+const ITEM_WIDTH = width / 2 - ITEM_MARGIN * 3;
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -74,11 +82,31 @@ export default function HomeScreen() {
     );
   };
 
-  const renderPlaceholderGrid = () => {
+  const navigateToPost = (post) => {
+    navigation.navigate("Post", { post });
+  };
+
+  const renderPostsGrid = () => {
     return (
       <View style={styles.gridContainer}>
-        {[1, 2, 3, 4, 5, 6].map((item) => (
-          <View key={item} style={styles.gridItem} />
+        {postsData.map((post) => (
+          <TouchableOpacity
+            key={post.id}
+            style={[
+              styles.gridItem,
+              {
+                height:
+                  post.aspectRatio === "tall" ? ITEM_WIDTH * 1.5 : ITEM_WIDTH,
+              },
+            ]}
+            //onPress={() => navigateToPost(post)} TODO
+          >
+            <Image
+              source={{ uri: post.imageUrl }}
+              style={styles.itemImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
         ))}
       </View>
     );
@@ -95,7 +123,9 @@ export default function HomeScreen() {
 
       {renderFilterTabs()}
 
-      <ScrollView style={styles.content}>{renderPlaceholderGrid()}</ScrollView>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {renderPostsGrid()}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -103,7 +133,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF9E6",
+    backgroundColor: "#f8f8f8",
   },
   header: {
     flexDirection: "row",
@@ -111,13 +141,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 15,
-    // borderBottomWidth: 1,
-    // borderBottomColor: '#f0f0f0',
   },
-  filterWrapper: {
-    // borderBottomWidth: 1,
-    // borderBottomColor: "#ffffff",
-  },
+  filterWrapper: {},
   filterContainer: {
     paddingVertical: 15,
   },
@@ -147,17 +172,39 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    marginBottom: 60, // Space for bottom navigation
   },
   gridContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
-    padding: 8,
+    padding: ITEM_MARGIN,
   },
   gridItem: {
-    width: "48%",
-    aspectRatio: 0.8,
-    backgroundColor: "#D8D8D8",
-    margin: "1%",
+    width: ITEM_WIDTH,
+    margin: ITEM_MARGIN,
     borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#D8D8D8",
+  },
+  itemImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 10,
+  },
+  bottomNavigation: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    flexDirection: "row",
+    backgroundColor: "#FFF8E7",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  navButton: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
