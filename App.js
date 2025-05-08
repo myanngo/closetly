@@ -18,6 +18,7 @@ import PreviewItemScreen from "./src/screens/PreviewItemScreen";
 
 // Import font loader
 import { loadFonts } from "./src/utils/fonts";
+import { PostsProvider } from "./src/utils/PostsContext";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -104,26 +105,28 @@ export default function App() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerShown: false,
-            animation: "none",
-          }}
-        >
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Signup" component={SignupScreen} />
-          <Stack.Screen
-            name="MainTabs"
-            component={TabNavigator}
-            options={{
-              gestureEnabled: false,
+      <PostsProvider>
+        <NavigationContainer>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              animation: "none",
             }}
-          />
-          <Stack.Screen name="AddDetails" component={AddDetailsScreen} />
-          <Stack.Screen name="PreviewItem" component={PreviewItemScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
+          >
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Signup" component={SignupScreen} />
+            <Stack.Screen
+              name="MainTabs"
+              component={TabNavigator}
+              options={{
+                gestureEnabled: false,
+              }}
+            />
+            <Stack.Screen name="AddDetails" component={AddDetailsScreen} />
+            <Stack.Screen name="PreviewItem" component={PreviewItemScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </PostsProvider>
     </GestureHandlerRootView>
   );
 }

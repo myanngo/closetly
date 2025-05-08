@@ -10,9 +10,11 @@ import {
   Dimensions,
   Platform,
   Alert,
+  Animated,
 } from 'react-native';
 import { FontAwesome, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { usePosts } from "../utils/PostsContext";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_PADDING = 20;
@@ -43,6 +45,7 @@ function ToggleRow({ label, options, value, onChange }) {
 export default function PreviewItemScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { addPost } = usePosts();
   const {
     photos = [], story, itemType, size, brand, condition
   } = route.params || {};
@@ -60,6 +63,22 @@ export default function PreviewItemScreen() {
         { text: 'Exit', style: 'destructive', onPress: () => navigation.navigate('HomeTab') },
       ]
     );
+  };
+
+  const handlePost = () => {
+    addPost({
+      title: route.params?.title || "Untitled",
+      brand,
+      listedBy: "feliciayan", // TODO: use real user
+      imageUrl: validPhotos[0] || "https://via.placeholder.com/400x400/eee/888888?text=No+Image",
+      images: validPhotos,
+      story,
+      itemType,
+      size,
+      condition,
+      aspectRatio: validPhotos.length > 0 ? "tall" : "square",
+    });
+    navigation.navigate("MainTabs", { screen: "Home" });
   };
 
   return (
@@ -148,7 +167,7 @@ export default function PreviewItemScreen() {
           Others can bid or comment for this item. You'll always have the final say, and you can edit this anytime.
         </Text>
         <TouchableOpacity style={styles.postButton}>
-          <Text style={styles.postButtonText}>Post</Text>
+          <Text style={styles.postButtonText} onPress={handlePost}>Post</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
