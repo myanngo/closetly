@@ -47,6 +47,9 @@ export default function HomeScreen() {
   const [matchedBid, setMatchedBid] = useState({}); // { [postId]: bid }
   const [carouselIndex, setCarouselIndex] = useState(0);
   const scrollX = React.useRef(new Animated.Value(0)).current;
+  const [searchQuery, setSearchQuery] = useState("");
+  const [comments, setComments] = useState({}); // { [postId]: [ { user, text } ] }
+  const [newComment, setNewComment] = useState("");
 
   // Dummy user closet for swap
   const userCloset = [
@@ -55,6 +58,19 @@ export default function HomeScreen() {
     { id: 103, title: "Black Boots" },
   ];
   const currentUser = "feliciayan"; // TODO: replace with real user
+
+  // Filter posts by search query
+  const filteredPosts = posts.filter((post) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      post.title?.toLowerCase().includes(q) ||
+      post.brand?.toLowerCase().includes(q) ||
+      post.itemType?.toLowerCase().includes(q) ||
+      post.size?.toLowerCase().includes(q) ||
+      post.condition?.toLowerCase().includes(q)
+    );
+  });
 
   const openModal = (post) => {
     setSelectedPost(post);
@@ -147,7 +163,7 @@ export default function HomeScreen() {
   const renderPostsGrid = () => {
     return (
       <View style={styles.gridContainer}>
-        {posts.map((post) => (
+        {filteredPosts.map((post) => (
           <TouchableOpacity
             key={post.id}
             style={[
@@ -321,6 +337,61 @@ export default function HomeScreen() {
     );
   };
 
+  const renderCommentSection = () => {
+    if (!selectedPost) return null;
+    const postId = selectedPost.id;
+    const postComments = comments[postId] || [];
+    return (
+      <View style={{ marginTop: 24 }}>
+        <Text style={{ fontWeight: "bold", fontSize: 16, marginBottom: 8 }}>
+          Comments
+        </Text>
+        <ScrollView style={{ maxHeight: 120 }}>
+          {postComments.length === 0 && (
+            <Text style={{ color: "#888", marginBottom: 8 }}>No comments yet. Be the first!</Text>
+          )}
+          {postComments.map((c, i) => (
+            <View key={i} style={styles.commentBubbleAlt}>
+              <Text style={styles.commentUser}>@{c.user}</Text>
+              <Text style={styles.commentText}>{c.text}</Text>
+            </View>
+          ))}
+        </ScrollView>
+        <View style={styles.commentInputRow}>
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Add a comment..."
+            placeholderTextColor="#bbb"
+            value={newComment}
+            onChangeText={setNewComment}
+            onSubmitEditing={() => submitComment()}
+            returnKeyType="send"
+          />
+          <TouchableOpacity
+            style={styles.commentSendBtn}
+            onPress={submitComment}
+            disabled={!newComment.trim()}
+          >
+            <Text style={styles.commentSendBtnText}>Send</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const submitComment = () => {
+    if (!selectedPost || !newComment.trim()) return;
+    const postId = selectedPost.id;
+    setComments((prev) => ({
+      ...prev,
+      [postId]: [
+        ...(prev[postId] || []),
+        { user: currentUser, text: newComment.trim() },
+      ],
+    }));
+    setNewComment("");
+  };
+
   const renderPostModal = () => {
     if (!selectedPost) return null;
     const images =
@@ -407,6 +478,7 @@ export default function HomeScreen() {
                 </View>
               </View>
               {renderBidSection()}
+              {renderCommentSection()}
             </ScrollView>
             <TouchableOpacity style={styles.closeModalBtn} onPress={closeModal}>
               <Text style={{ color: "#d00", fontWeight: "bold" }}>Close</Text>
@@ -421,9 +493,16 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <MaterialCommunityIcons name="hanger" size={40} color="#ff0000" />
-        <TouchableOpacity onPress={() => navigation.navigate("Search")}>
-          <FontAwesome name="search" size={24} color="#000" />
-        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: 16, marginRight: 8 }}>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search posts..."
+            placeholderTextColor="#bbb"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+        </View>
       </View>
 
       {renderFilterTabs()}
@@ -687,5 +766,62 @@ const styles = StyleSheet.create({
   selectBidBtnText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  searchBar: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+    color: '#222',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  commentBubbleAlt: {
+    backgroundColor: '#eaf6ff',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#b3d8f7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: '#eee',
+    color: '#222',
+    marginRight: 8,
+  },
+  commentSendBtn: {
+    backgroundColor: '#d00',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  commentSendBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  sizeValue: {
+    color: "#d00",
   },
 });
