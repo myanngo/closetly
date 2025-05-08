@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { View, Text } from "react-native";
+import { View, Text, Image } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -16,9 +16,10 @@ import SignupScreen from "./src/screens/SignupScreen";
 import AddDetailsScreen from "./src/screens/AddDetailsScreen";
 import PreviewItemScreen from "./src/screens/PreviewItemScreen";
 
-// Import font loader
+// Import font loader and styles
 import { loadFonts } from "./src/utils/fonts";
 import { PostsProvider } from "./src/utils/PostsContext";
+import { globalStyles, tabBarStyle } from "./src/utils/globalStyles";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -47,16 +48,28 @@ function TabNavigator() {
         tabBarInactiveTintColor: "#B89B5E",
         tabBarShowLabel: true,
         headerShown: false,
-        tabBarStyle: {
-          backgroundColor: "#f8f8f8",
-          borderTopWidth: 0,
-          elevation: 0,
-          height: 100,
-        },
+        tabBarStyle: tabBarStyle,
         tabBarLabelStyle: {
           marginTop: 10,
           fontSize: 12,
+          fontFamily: "CircularStd-Medium",
         },
+        tabBarBackground: () => (
+          <View style={{ flex: 1 }}>
+            <Image
+              source={require("./assets/grain-overlay.webp")}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                opacity: 0.4,
+              }}
+              resizeMode="repeat"
+            />
+          </View>
+        ),
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />

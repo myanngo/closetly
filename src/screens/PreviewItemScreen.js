@@ -15,6 +15,7 @@ import {
 import { FontAwesome, FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { usePosts } from "../utils/PostsContext";
+import { globalStyles } from "../utils/globalStyles";
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_PADDING = 20;
@@ -47,7 +48,7 @@ export default function PreviewItemScreen() {
   const route = useRoute();
   const { addPost } = usePosts();
   const {
-    photos = [], story, itemType, size, brand, condition
+    photos = [], story, itemType, size, brand, condition, title
   } = route.params || {};
   const [market, setMarket] = useState('yes');
   const [letGo, setLetGo] = useState('give');
@@ -92,7 +93,7 @@ export default function PreviewItemScreen() {
             <Ionicons name="close" size={32} color="#ff0000" />
           </TouchableOpacity>
         </View>
-        <Text style={styles.heading}>Preview your item</Text>
+        <Text style={[styles.heading, globalStyles.textBold]}>Preview your item</Text>
         <View style={styles.card}>
           <View style={{ alignItems: 'center', marginBottom: 16 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%', justifyContent: 'center' }}>
@@ -119,29 +120,30 @@ export default function PreviewItemScreen() {
               </TouchableOpacity>
             </View>
             {validPhotos.length > 1 && (
-              <Text style={{ color: '#bbb', fontSize: 13, marginTop: 4 }}>
+              <Text style={[styles.photoCount, globalStyles.text]}>
                 {currentIndex + 1} / {validPhotos.length}
               </Text>
             )}
           </View>
-          <Text style={styles.storyLabel}>Story</Text>
-          <Text style={styles.storyText}>{story}</Text>
+          <Text style={[styles.title, globalStyles.textBold]}>{title}</Text>
+          <Text style={[styles.storyLabel, globalStyles.textBold]}>Story</Text>
+          <Text style={[styles.storyText, globalStyles.text]}>{story}</Text>
           <View style={styles.detailsTable}>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Item Type</Text>
-              <Text style={styles.detailValue}>{itemType || '-'}</Text>
+              <Text style={[styles.detailLabel, globalStyles.textMedium]}>Item Type</Text>
+              <Text style={[styles.detailValue, globalStyles.text]}>{itemType || '-'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Size</Text>
-              <Text style={styles.detailValue}>{size || '-'}</Text>
+              <Text style={[styles.detailLabel, globalStyles.textMedium]}>Size</Text>
+              <Text style={[styles.detailValue, globalStyles.text]}>{size || '-'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Brand</Text>
-              <Text style={styles.detailValue}>{brand || '-'}</Text>
+              <Text style={[styles.detailLabel, globalStyles.textMedium]}>Brand</Text>
+              <Text style={[styles.detailValue, globalStyles.text]}>{brand || '-'}</Text>
             </View>
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Condition</Text>
-              <Text style={styles.detailValue}>{condition || '-'}</Text>
+              <Text style={[styles.detailLabel, globalStyles.textMedium]}>Condition</Text>
+              <Text style={[styles.detailValue, globalStyles.text]}>{condition || '-'}</Text>
             </View>
           </View>
         </View>
@@ -163,11 +165,11 @@ export default function PreviewItemScreen() {
           value={letGo}
           onChange={setLetGo}
         />
-        <Text style={styles.infoText}>
+        <Text style={[styles.infoText, globalStyles.text]}>
           Others can bid or comment for this item. You'll always have the final say, and you can edit this anytime.
         </Text>
         <TouchableOpacity style={styles.postButton}>
-          <Text style={styles.postButtonText} onPress={handlePost}>Post</Text>
+          <Text style={[styles.postButtonText, globalStyles.textMedium]} onPress={handlePost}>Post</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -323,5 +325,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontFamily: 'CircularStd-Bold',
     fontSize: 18,
+  },
+  title: {
+    fontSize: 24,
+    color: '#111',
+    marginBottom: 16,
+  },
+  photoCount: {
+    color: '#bbb',
+    fontSize: 13,
+    marginTop: 4,
   },
 }); 

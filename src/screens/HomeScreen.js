@@ -21,6 +21,7 @@ import {
   Ionicons,
 } from "@expo/vector-icons";
 import { usePosts } from "../utils/PostsContext";
+import GrainBackground from "../components/GrainBackground";
 
 const FILTER_OPTIONS = [
   { id: "all", label: "All", icon: "th-large" },
@@ -490,35 +491,36 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <MaterialCommunityIcons name="hanger" size={40} color="#ff0000" />
-        <View style={{ flex: 1, marginLeft: 16, marginRight: 8 }}>
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Search posts..."
-            placeholderTextColor="#bbb"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            clearButtonMode="while-editing"
-          />
+    <GrainBackground>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <MaterialCommunityIcons name="hanger" size={40} color="#ff0000" />
+          <View style={{ flex: 1, marginLeft: 16, marginRight: 8 }}>
+            <TextInput
+              style={styles.searchBar}
+              placeholder="Search posts..."
+              placeholderTextColor="#bbb"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              clearButtonMode="while-editing"
+            />
+          </View>
         </View>
-      </View>
 
-      {renderFilterTabs()}
+        {renderFilterTabs()}
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {renderPostsGrid()}
-      </ScrollView>
-      {renderPostModal()}
-    </SafeAreaView>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {renderPostsGrid()}
+        </ScrollView>
+        {renderPostModal()}
+      </SafeAreaView>
+    </GrainBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f8f8",
   },
   header: {
     flexDirection: "row",

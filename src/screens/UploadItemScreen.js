@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
   },
   storyInput: {
     minHeight: 200,
-    backgroundColor: "#ebeae4", // Post-it yellow
+    backgroundColor: "#ebeae4", // Post-it color
     padding: 20,
     fontFamily: "CircularStd-Book",
     fontSize: 16,

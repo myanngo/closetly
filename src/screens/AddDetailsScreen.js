@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { FontAwesome, FontAwesome5, Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { globalStyles } from "../utils/globalStyles";
 
 const ITEM_TYPES = [
   "Shirt",
@@ -162,11 +163,12 @@ export default function AddDetailsScreen() {
   const [size, setSize] = useState("");
   const [brand, setBrand] = useState("");
   const [condition, setCondition] = useState("");
+  const [title, setTitle] = useState("");
   const [picker, setPicker] = useState(null);
   const [brandInput, setBrandInput] = useState("");
 
   const canProceed =
-    itemType && size && brand && condition && photos.some(Boolean);
+    itemType && size && brand && condition && photos.some(Boolean) && title.trim();
 
   const handleSelect = (type, value) => {
     if (type === "itemType") setItemType(value);
@@ -212,11 +214,21 @@ export default function AddDetailsScreen() {
               <Ionicons name="close" size={32} color="#ff0000" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.heading}>Add more details</Text>
+          <Text style={[styles.heading, globalStyles.textBold]}>Add more details</Text>
           <View style={styles.photoBoxRow}>
             {photos.filter(Boolean).map((uri, idx) => (
               <Image key={uri} source={{ uri }} style={styles.photoBoxImg} />
             ))}
+          </View>
+          <View style={styles.titleContainer}>
+            <TextInput
+              style={[styles.titleInput, globalStyles.text]}
+              placeholder="Add a title..."
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={setTitle}
+              maxLength={50}
+            />
           </View>
           <View style={styles.selects}>
             <SelectRow
@@ -253,11 +265,14 @@ export default function AddDetailsScreen() {
                 size,
                 brand,
                 condition,
+                title,
               })
             }
             disabled={!canProceed}
           >
-            <Text style={styles.nextButtonText}>Next</Text>
+            <Text style={[styles.nextButtonText, globalStyles.textMedium]}>
+              Next
+            </Text>
           </TouchableOpacity>
           {/* Simple picker modal */}
           {picker && (
@@ -459,5 +474,15 @@ const styles = StyleSheet.create({
     padding: 8,
     marginBottom: 10,
     width: "100%",
+  },
+  titleContainer: {
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  titleInput: {
+    fontSize: 18,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
 });
