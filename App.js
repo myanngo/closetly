@@ -15,6 +15,8 @@ import LoginScreen from "./src/screens/LoginScreen";
 import SignupScreen from "./src/screens/SignupScreen";
 import AddDetailsScreen from "./src/screens/AddDetailsScreen";
 import PreviewItemScreen from "./src/screens/PreviewItemScreen";
+import EditProfileScreen from './src/screens/EditProfileScreen';
+
 
 // Import font loader and styles
 import { loadFonts } from "./src/utils/fonts";
@@ -137,6 +139,7 @@ export default function App() {
             />
             <Stack.Screen name="AddDetails" component={AddDetailsScreen} />
             <Stack.Screen name="PreviewItem" component={PreviewItemScreen} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           </Stack.Navigator>
         </NavigationContainer>
       </PostsProvider>

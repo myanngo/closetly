@@ -40,8 +40,23 @@ const TABS = {
   ACTIVE: "Active Listings",
   ARCHIVE: "Archive",
 };
+} from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView>
+        <View style={styles.header}>
+          <View style={styles.profileImageContainer}>
+            <View style={styles.profileImage}>
+              <FontAwesome name="user" size={40} color="#ccc" />
+            </View>
+          </View>
+          <Text style={styles.username}>Username</Text>
+          <Text style={styles.bio}>This is the user bio.</Text>
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -106,6 +121,12 @@ export default function ProfileScreen() {
     </View>
   );
 
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('EditProfile')}
+        >
+          <FontAwesome name="pencil" size={16} color="#fff" style={styles.editIcon} />
+          <Text style={styles.editButtonText}>Edit Profile</Text>
   const renderTabs = () => (
     <View style={styles.tabContainer}>
       {Object.values(TABS).map((tab) => (
@@ -376,112 +397,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   gridItem: {
-    width: ITEM_SIZE,
-    height: ITEM_SIZE,
-    margin: 4,
-    borderRadius: 8,
-    overflow: "hidden",
-    position: "relative",
+    width: '32%',
+    aspectRatio: 1,
+    backgroundColor: '#f8f8f8',
+    margin: '0.66%',
+    borderRadius: 5,
   },
-  gridItemImage: {
-    width: "100%",
-    height: "100%",
-  },
-  unarchiveButton: {
-    position: "absolute",
-    right: 8,
-    top: 8,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 16,
-    padding: 6,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "90%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  imagePickerButton: {
-    alignSelf: "center",
-    marginBottom: 20,
-  },
-  editProfileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: "#f8f8f8",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  bioInput: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  modalButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 20,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  cancelButton: {
-    backgroundColor: "#f8f8f8",
-    marginRight: 8,
-  },
-  saveButton: {
-    backgroundColor: "#ff0000",
-    marginLeft: 8,
-  },
-  cancelButtonText: {
-    color: "#666",
-    fontWeight: "bold",
-  },
-  saveButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  logoutButton: {
-    position: "absolute",
-    top: 20,
-    right: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 8,
-    borderRadius: 20,
-  },
-  logoutText: {
-    marginLeft: 8,
-    color: "#d00",
-    fontSize: 16,
-  },
-});
+}); 
