@@ -32,8 +32,40 @@ const FILTER_OPTIONS = [
 ];
 
 const { width } = Dimensions.get("window");
-const ITEM_MARGIN = 8;
+const ITEM_MARGIN = 1;
 const ITEM_WIDTH = width / 2 - ITEM_MARGIN * 3;
+
+// Add stories data structure
+const DUMMY_STORIES = [
+  {
+    id: 1,
+    username: "feliciayan",
+    avatar: "https://i.pravatar.cc/150?img=1",
+    hasUnseenStory: true,
+    timestamp: new Date(Date.now() - 3600000), // 1 hour ago
+  },
+  {
+    id: 2,
+    username: "stylequeen",
+    avatar: "https://i.pravatar.cc/150?img=2",
+    hasUnseenStory: true,
+    timestamp: new Date(Date.now() - 7200000), // 2 hours ago
+  },
+  {
+    id: 3,
+    username: "fashionista",
+    avatar: "https://i.pravatar.cc/150?img=3",
+    hasUnseenStory: false,
+    timestamp: new Date(Date.now() - 43200000), // 12 hours ago
+  },
+  {
+    id: 4,
+    username: "trendsetter",
+    avatar: "https://i.pravatar.cc/150?img=4",
+    hasUnseenStory: true,
+    timestamp: new Date(Date.now() - 86400000), // 24 hours ago
+  },
+];
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -51,6 +83,9 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [comments, setComments] = useState({}); // { [postId]: [ { user, text } ] }
   const [newComment, setNewComment] = useState("");
+  const [stories, setStories] = useState(DUMMY_STORIES);
+  const [selectedStory, setSelectedStory] = useState(null);
+  const [storyModalVisible, setStoryModalVisible] = useState(false);
 
   // Dummy user closet for swap
   const userCloset = [
@@ -176,11 +211,14 @@ export default function HomeScreen() {
             ]}
             onPress={() => openModal(post)}
           >
-            <Image
-              source={{ uri: post.imageUrl }}
-              style={styles.itemImage}
-              resizeMode="cover"
-            />
+            <View>
+              <Image
+                source={{ uri: post.imageUrl }}
+                style={styles.itemImage}
+                resizeMode="cover"
+              />
+              <Text style={styles.gridUsername}>@username</Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -213,7 +251,9 @@ export default function HomeScreen() {
         </Text>
         <ScrollView style={{ maxHeight: 180 }}>
           {postBids.length === 0 && (
-            <Text style={{ color: "#888", marginBottom: 8 }}>No bids yet. Be the first!</Text>
+            <Text style={{ color: "#888", marginBottom: 8 }}>
+              No bids yet. Be the first!
+            </Text>
           )}
           {postBids.map((bid, i) => (
             <View
@@ -349,7 +389,9 @@ export default function HomeScreen() {
         </Text>
         <ScrollView style={{ maxHeight: 120 }}>
           {postComments.length === 0 && (
-            <Text style={{ color: "#888", marginBottom: 8 }}>No comments yet. Be the first!</Text>
+            <Text style={{ color: "#888", marginBottom: 8 }}>
+              No comments yet. Be the first!
+            </Text>
           )}
           {postComments.map((c, i) => (
             <View key={i} style={styles.commentBubbleAlt}>
@@ -490,6 +532,107 @@ export default function HomeScreen() {
     );
   };
 
+  // Add story viewing functions
+  const openStory = (story) => {
+    setSelectedStory(story);
+    setStoryModalVisible(true);
+    // Mark story as seen
+    setStories((prevStories) =>
+      prevStories.map((s) =>
+        s.id === story.id ? { ...s, hasUnseenStory: false } : s
+      )
+    );
+  };
+
+  const closeStory = () => {
+    setStoryModalVisible(false);
+    setSelectedStory(null);
+  };
+
+  // Add stories row component
+  const renderStoriesRow = () => {
+    return (
+      <View style={styles.storiesContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.storiesContent}
+        >
+          <Text style={styles.ootdText}>OOTDs</Text>
+          {stories.map((story) => (
+            <TouchableOpacity
+              key={story.id}
+              style={styles.storyItem}
+              onPress={() => openStory(story)}
+            >
+              <View
+                style={[
+                  styles.storyRing,
+                  story.hasUnseenStory && styles.unseenStoryRing,
+                ]}
+              >
+                <Image
+                  source={{ uri: story.avatar }}
+                  style={styles.storyAvatar}
+                />
+              </View>
+              <Text style={styles.storyUsername} numberOfLines={1}>
+                {story.username}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // Add story modal component
+  const renderStoryModal = () => {
+    if (!selectedStory) return null;
+
+    return (
+      <Modal
+        visible={storyModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeStory}
+      >
+        <View style={styles.storyModalContainer}>
+          <TouchableOpacity
+            style={styles.storyCloseButton}
+            onPress={closeStory}
+          >
+            <Ionicons name="close" size={30} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.storyContent}>
+            <View style={styles.storyHeader}>
+              <Image
+                source={{ uri: selectedStory.avatar }}
+                style={styles.storyHeaderAvatar}
+              />
+              <Text style={styles.storyHeaderUsername}>
+                {selectedStory.username}
+              </Text>
+              <Text style={styles.storyTimestamp}>
+                {formatStoryTime(selectedStory.timestamp)}
+              </Text>
+            </View>
+            {/* Placeholder for story content */}
+            <View style={styles.storyImagePlaceholder}>
+              <Text style={styles.storyPlaceholderText}>Story Content</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+  // Helper function to format story time
+  const formatStoryTime = (timestamp) => {
+    const hours = Math.floor((Date.now() - timestamp) / 3600000);
+    return `${hours}h ago`;
+  };
+
   return (
     <GrainBackground>
       <SafeAreaView style={styles.container}>
@@ -498,7 +641,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1, marginLeft: 16, marginRight: 8 }}>
             <TextInput
               style={styles.searchBar}
-              placeholder="Search posts..."
+              placeholder="What do you want to find?"
               placeholderTextColor="#bbb"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -506,13 +649,14 @@ export default function HomeScreen() {
             />
           </View>
         </View>
-
-        {renderFilterTabs()}
+        {/* {renderFilterTabs()} */}
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {renderStoriesRow()}
           {renderPostsGrid()}
         </ScrollView>
         {renderPostModal()}
+        {renderStoryModal()}
       </SafeAreaView>
     </GrainBackground>
   );
@@ -559,7 +703,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginBottom: 60, // Space for bottom navigation
+    marginBottom: 10, // Space for bottom navigation
   },
   gridContainer: {
     flexDirection: "row",
@@ -569,30 +713,24 @@ const styles = StyleSheet.create({
   gridItem: {
     width: ITEM_WIDTH,
     margin: ITEM_MARGIN,
-    borderRadius: 10,
+    borderRadius: 0,
     overflow: "hidden",
-    backgroundColor: "#D8D8D8",
   },
   itemImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 10,
+    borderRadius: 0,
   },
-  bottomNavigation: {
+  gridUsername: {
+    fontFamily: "CircularStd-Medium",
+    fontSize: 12,
+    textAlign: "left",
     position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 60,
-    flexDirection: "row",
-    backgroundColor: "#FFF8E7",
-    borderTopWidth: 1,
-    borderTopColor: "#f0f0f0",
-  },
-  navButton: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    bottom: 6,
+    right: 6,
+    color: "#FFF",
+    backgroundColor: "#ff4133",
+    paddingHorizontal: 5,
   },
   bidButton: {
     backgroundColor: "#ff0000",
@@ -735,95 +873,195 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   commentBubble: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: "#f8f8f8",
     borderRadius: 14,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#eee',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    borderColor: "#eee",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 10,
   },
   selectedCommentBubble: {
-    borderColor: '#d00',
-    backgroundColor: '#fff2c9',
+    borderColor: "#d00",
+    backgroundColor: "#fff2c9",
   },
   commentUser: {
-    fontWeight: 'bold',
-    color: '#d00',
+    fontWeight: "bold",
+    color: "#d00",
     marginRight: 8,
   },
   commentText: {
     flex: 1,
-    color: '#333',
+    color: "#333",
   },
   selectBidBtn: {
-    backgroundColor: '#d00',
+    backgroundColor: "#d00",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   selectBidBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   searchBar: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
     fontSize: 16,
     borderWidth: 1,
-    borderColor: '#eee',
-    color: '#222',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
+    borderColor: "#eee",
+    color: "#222",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 1,
     elevation: 1,
   },
   commentBubbleAlt: {
-    backgroundColor: '#eaf6ff',
+    backgroundColor: "#eaf6ff",
     borderRadius: 14,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#b3d8f7',
-    flexDirection: 'row',
-    alignItems: 'center',
+    borderColor: "#b3d8f7",
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   commentInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 8,
   },
   commentInput: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 8,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: '#eee',
-    color: '#222',
+    borderColor: "#eee",
+    color: "#222",
     marginRight: 8,
   },
   commentSendBtn: {
-    backgroundColor: '#d00',
+    backgroundColor: "#d00",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   commentSendBtnText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
     fontSize: 15,
   },
   sizeValue: {
     color: "#d00",
+  },
+  storiesContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+  },
+  storiesContent: {
+    paddingHorizontal: 12,
+  },
+  storyItem: {
+    alignItems: "center",
+    marginRight: 16,
+    width: 70,
+  },
+  storyRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    padding: 2,
+    backgroundColor: "#fff",
+    borderWidth: 3,
+    borderColor: "#ddd",
+  },
+  unseenStoryRing: {
+    borderColor: "#ff4133",
+    shadowColor: "#ff4133",
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    elevation: 4,
+  },
+  storyAvatar: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 30,
+  },
+  storyUsername: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#333",
+    textAlign: "center",
+    width: 70,
+    fontFamily: "CircularStd-Book",
+  },
+  storyModalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.9)",
+  },
+  storyCloseButton: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    zIndex: 10,
+  },
+  storyContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  storyHeader: {
+    position: "absolute",
+    top: 40,
+    left: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  storyHeaderAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  storyHeaderUsername: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  storyTimestamp: {
+    color: "#fff",
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  storyImagePlaceholder: {
+    width: "100%",
+    height: "80%",
+    backgroundColor: "#333",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  storyPlaceholderText: {
+    color: "#fff",
+    fontSize: 18,
+  },
+  ootdText: {
+    color: "#ff0000",
+    fontSize: 30,
+    fontFamily: "InstrumentSerif-Regular",
+    alignSelf: "center",
+    marginHorizontal: 5,
   },
 });

@@ -17,6 +17,7 @@ import {
   FontAwesome,
   FontAwesome5,
   MaterialCommunityIcons,
+  MaterialIcons,
 } from "@expo/vector-icons";
 import { usePosts } from "../utils/PostsContext";
 import { useNavigation } from "@react-navigation/native";
@@ -40,23 +41,7 @@ const TABS = {
   ACTIVE: "Active Listings",
   ARCHIVE: "Archive",
 };
-} from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-
 export default function ProfileScreen() {
-  const navigation = useNavigation();
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <View style={styles.profileImageContainer}>
-            <View style={styles.profileImage}>
-              <FontAwesome name="user" size={40} color="#ccc" />
-            </View>
-          </View>
-          <Text style={styles.username}>Username</Text>
-          <Text style={styles.bio}>This is the user bio.</Text>
   const navigation = useNavigation();
   const [activeTab, setActiveTab] = useState(TABS.ACTIVE);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -121,12 +106,6 @@ export default function ProfileScreen() {
     </View>
   );
 
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <FontAwesome name="pencil" size={16} color="#fff" style={styles.editIcon} />
-          <Text style={styles.editButtonText}>Edit Profile</Text>
   const renderTabs = () => (
     <View style={styles.tabContainer}>
       {Object.values(TABS).map((tab) => (
@@ -242,10 +221,10 @@ export default function ProfileScreen() {
               style={styles.logoutButton}
               onPress={handleLogout}
             >
-              <FontAwesome5 name="sign-out-alt" size={20} color="#d00" />
-              <Text style={[styles.logoutText, globalStyles.textMedium]}>
-                Logout
-              </Text>
+              <MaterialIcons name="logout" size={24} color="#d00" />
+              {/* <Text style={[styles.logoutText, globalStyles.textMedium]}>
+                Log Out
+              </Text> */}
             </TouchableOpacity>
             {renderProfileImage()}
             <Text style={[styles.username, globalStyles.textBold]}>
@@ -381,7 +360,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     fontWeight: "500",
-    fontFamily: "CircularStd-Bolds",
+    fontFamily: "CircularStd-Bold",
   },
   activeTabText: {
     color: "#ff0000",
@@ -397,10 +376,24 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   gridItem: {
-    width: '32%',
+    width: "32%",
     aspectRatio: 1,
-    backgroundColor: '#f8f8f8',
-    margin: '0.66%',
+    backgroundColor: "#f8f8f8",
+    margin: "0.66%",
     borderRadius: 5,
   },
-}); 
+  logoutButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 8,
+    borderRadius: 20,
+  },
+  logoutText: {
+    marginLeft: 8,
+    color: "#d00",
+    fontSize: 16,
+  },
+});
