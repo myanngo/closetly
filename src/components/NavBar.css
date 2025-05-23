@@ -1,0 +1,30 @@
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 60px;
+  background: #fff;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 100;
+}
+
+.bottom-nav a {
+  color: #b85c5c;
+  font-size: 2rem;
+  text-decoration: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-nav a.active, .bottom-nav a:hover {
+  background: #fff0f0;
+  color: #d36c6c;
+} 

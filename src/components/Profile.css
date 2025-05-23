@@ -1,0 +1,135 @@
+.profile-page {
+  padding: 1.5rem 1rem 4rem 1rem;
+  font-family: 'Manrope', Arial, sans-serif;
+  background: #f9f6f2;
+  min-height: 100vh;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.avatar-placeholder {
+  width: 90px;
+  height: 90px;
+  background: #e5e2de;
+  border-radius: 50%;
+}
+
+.profile-name {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1.3rem;
+  font-weight: 400;
+}
+
+.profile-username {
+  color: #222;
+  font-size: 1.1rem;
+  opacity: 0.8;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+
+.profile-bio {
+  font-size: 1rem;
+  color: #444;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+  font-family: 'Manrope', Arial, sans-serif;
+}
+
+.profile-friends {
+  margin-bottom: 1.5rem;
+}
+
+.profile-friends-label {
+  font-family: 'Manrope', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem;
+}
+
+.friends-list {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.friend-avatar {
+  width: 36px;
+  height: 36px;
+  background: #e5e2de;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  color: #b85c5c;
+}
+.friend-avatar.add {
+  background: #fff0f0;
+  border: 1.5px dashed #b85c5c;
+  cursor: pointer;
+}
+
+.profile-items-carousel {
+  margin: 2.2rem 0 2.2rem 0;
+}
+.carousel-label {
+  font-family: 'Manrope', Arial, sans-serif;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+.carousel-scroll {
+  display: flex;
+  gap: 1.2rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  margin-top: 0.5rem;
+  scrollbar-width: thin;
+}
+.carousel-item {
+  min-width: 110px;
+  max-width: 120px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.7rem 0.5rem 0.5rem 0.5rem;
+}
+.carousel-item-img {
+  width: 60px;
+  height: 60px;
+  background: #e5e2de;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.carousel-item-name {
+  font-size: 0.98rem;
+  color: #b85c5c;
+  text-align: center;
+  font-family: 'Manrope', Arial, sans-serif;
+}
+
+.profile-stats {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stat-number {
+  color: #d36c6c;
+  font-size: 2.2rem;
+  font-family: 'Instrument Serif', serif;
+  font-weight: 700;
+  margin-right: 0.7rem;
+  filter: drop-shadow(0 0 8px #ffeaea);
+} 

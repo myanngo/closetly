@@ -1,0 +1,124 @@
+.home-feed {
+  padding: 1.5rem 1rem 4rem 1rem;
+  font-family: "Inter", Arial, sans-serif;
+  background: #f9f6f2;
+  min-height: 100vh;
+}
+
+.swap-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+}
+
+.swap-header {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #b85c5c;
+  font-weight: 500;
+}
+
+.item-name {
+  color: #d36c6c;
+  margin-left: 0.5rem;
+  font-weight: 600;
+}
+
+.swap-story {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.story-text {
+  flex: 2;
+  font-size: 0.9rem;
+}
+
+.story-photo-placeholder {
+  flex: 1;
+  height: 70px;
+  background: #e5e2de;
+  border-radius: 8px;
+  margin-left: 1rem;
+}
+
+.swap-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.swap-actions button {
+  background: #222;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 0.4rem 1.2rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.swap-actions button:hover {
+  background: #b85c5c;
+}
+
+.feed-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 1.2rem;
+  margin-bottom: 1.2rem;
+}
+
+.feed-toggle button {
+  background: none;
+  border: none;
+  font-family: "Manrope", Arial, sans-serif;
+  font-size: 1.1rem;
+  color: #b85c5c;
+  padding: 0.4rem 1.2rem;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.feed-toggle button.active,
+.feed-toggle button:hover {
+  background: #fff0f0;
+  color: #d36c6c;
+  font-weight: 600;
+}
+
+.feed-post-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2.2rem;
+  animation: slideWiggle 0.7s cubic-bezier(.7,-0.2,.5,1.5) both;
+}
+
+.feed-post-container:nth-child(1) { animation-delay: 0.05s; }
+.feed-post-container:nth-child(2) { animation-delay: 0.15s; }
+.feed-post-container:nth-child(3) { animation-delay: 0.25s; }
+.feed-post-container:nth-child(4) { animation-delay: 0.35s; }
+.feed-post-container:nth-child(5) { animation-delay: 0.45s; }
+
+@keyframes slideWiggle {
+  0% {
+    opacity: 0;
+    transform: translateY(60px) rotate(-6deg) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-8px) rotate(2deg) scale(1.03);
+  }
+  80% {
+    transform: translateY(2px) rotate(-2deg) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}

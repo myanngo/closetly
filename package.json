@@ -1,34 +1,46 @@
 {
-  "name": "closetly",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web"
-  },
+  "name": "closetly-pwa",
+  "version": "0.1.0",
+  "private": true,
   "dependencies": {
-    "@expo-google-fonts/instrument-serif": "^0.3.0",
-    "@expo/vector-icons": "^14.1.0",
-    "@react-native-async-storage/async-storage": "^2.1.2",
-    "@react-navigation/bottom-tabs": "^7.3.11",
-    "@react-navigation/native": "^7.1.7",
-    "@react-navigation/native-stack": "^7.3.11",
-    "expo": "~53.0.7",
-    "expo-font": "^13.3.1",
-    "expo-image-picker": "^16.1.4",
-    "expo-splash-screen": "^0.30.8",
-    "expo-status-bar": "~2.2.3",
-    "react": "19.0.0",
-    "react-native": "0.79.2",
-    "react-native-gesture-handler": "^2.25.0",
-    "react-native-reanimated": "^3.17.5",
-    "react-native-safe-area-context": "^5.4.0",
-    "react-native-screens": "^4.10.0"
+    "@fontawesome/fontawesome-svg-core": "^6.7.2",
+    "@fontawesome/free-solid-svg-icons": "^6.7.2",
+    "@fontawesome/react-fontawesome": "^0.2.2",
+    "@fontsource/instrument-serif": "^5.2.5",
+    "@fontsource/manrope": "^5.2.5",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/free-regular-svg-icons": "^6.7.2",
+    "@fortawesome/free-solid-svg-icons": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
+    "cra-template-pwa": "2.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.6.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^5.0.1"
   },
-  "devDependencies": {
-    "@babel/core": "^7.20.0"
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
   },
-  "private": true
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
 }

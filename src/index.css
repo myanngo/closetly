@@ -1,0 +1,27 @@
+@import '@fontsource/instrument-serif';
+@import '@fontsource/manrope';
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #f9f6f2;
+  font-family: 'Manrope', Arial, sans-serif;
+  color: #222;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+#root {
+  min-height: 100vh;
+}
