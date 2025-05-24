@@ -6,6 +6,7 @@ import {
   faUser,
   faExchangeAlt,
   faPlus,
+  faRetweet,
 } from "@fortawesome/free-solid-svg-icons";
 import "./ItemDetail.css";
 import Postcard from "./Postcard";
@@ -70,6 +71,7 @@ const ItemDetail = () => {
           className="history-btn"
           onClick={() => navigate(`/item/${item.id}/history`)}
         >
+          <FontAwesomeIcon icon={faRetweet} />
           see item history
         </button>
       </div>
@@ -78,6 +80,7 @@ const ItemDetail = () => {
         with this item!
       </div>
       <div className="item-detail-info">
+        <div className="item-detail-label">Item Details</div>
         <div>
           <b>Brand:</b> {item.details.brand}
         </div>

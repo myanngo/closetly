@@ -12,8 +12,8 @@
 
 .back-btn {
   position: absolute;
-  top: 1.2rem;
-  left: 1.2rem;
+  top: 1rem;
+  left: 0.5rem;
   background: none;
   border: none;
   font-size: 1.5rem;
@@ -29,14 +29,14 @@
 }
 
 .item-detail-title {
-  font-family: 'Instrument Serif', serif;
-  font-size: 1.3rem;
-  color: #d36c6c;
+  font-family: "Instrument Serif", serif;
+  font-size: 1.7rem;
+  color: #c83f3f;
   margin-bottom: 0.2rem;
 }
 
 .item-detail-meta {
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   color: #b85c5c;
   text-align: center;
   margin-bottom: 1.2rem;
@@ -54,8 +54,8 @@
 }
 
 .item-detail-label {
-  font-family: 'Instrument Serif', serif;
-  font-size: 1.1rem;
+  font-family: "Instrument Serif", serif;
+  font-size: 1.3rem;
   color: #b85c5c;
   margin-bottom: 0.5rem;
 }
@@ -66,7 +66,7 @@
   background: #f9f6f2;
   border-radius: 12px;
   padding: 1rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
 .story-text {
@@ -90,7 +90,7 @@
 }
 
 .item-detail-actions button {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-size: 0.98rem;
   border: none;
   border-radius: 20px;
@@ -136,8 +136,8 @@
 
 .swap-count {
   color: #d36c6c;
-  font-size: 2.1rem;
-  font-family: 'Instrument Serif', serif;
+  font-size: 2.5rem;
+  font-family: "Instrument Serif", serif;
   font-weight: 700;
   margin-right: 0.5rem;
   filter: drop-shadow(0 0 8px #ffeaea);
@@ -145,13 +145,13 @@
 
 .item-detail-info {
   background: #f9f6f2;
-  border-radius: 12px;
-  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  padding: 0.8rem 3rem;
   font-size: 1rem;
   color: #222;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   margin-top: 0.5rem;
-} 
+}
