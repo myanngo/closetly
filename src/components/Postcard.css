@@ -101,6 +101,101 @@
   color: #b85c5c;
 }
 
+.postcard-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.7rem;
+}
+
+.postcard-comment-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  background: none;
+  border: none;
+  color: #b85c5c;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  outline: none;
+  transition: color 0.2s;
+}
+
+.postcard-comment-btn:hover {
+  color: #d36c6c;
+}
+
+.postcard-comment-count {
+  font-size: 0.98rem;
+  color: #b85c5c;
+}
+
+.postcard-comments {
+  margin-top: 1rem;
+  border-top: 1px solid #e5e2de;
+  padding-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.postcard-comment {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.comment-user {
+  font-family: "Instrument Serif", serif;
+  color: #b85c5c;
+  font-size: 0.95rem;
+}
+
+.comment-text {
+  font-family: "Manrope", Arial, sans-serif;
+  font-size: 0.95rem;
+  color: #222;
+}
+
+.comment-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.comment-input {
+  flex: 1;
+  border: 1px solid #e5e2de;
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  font-family: "Manrope", Arial, sans-serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.comment-input:focus {
+  border-color: #b85c5c;
+}
+
+.comment-submit {
+  background: #b85c5c;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.comment-submit:hover {
+  background: #d36c6c;
+}
+
 @media (max-width: 500px) {
   .postcard-v2 {
     width: 90vw;

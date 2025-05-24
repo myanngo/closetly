@@ -1,0 +1,191 @@
+.swap-offer-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.swap-offer-content {
+  background: #f9f6f2;
+  border-radius: 16px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.back-btn {
+  position: absolute;
+  top: 1rem;
+  left: 0.5rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #b85c5c;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.swap-offer-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: 1.8rem;
+  color: #b85c5c;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.swap-offer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.swap-items {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.swap-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.swap-item h3 {
+  font-family: 'Manrope', Arial, sans-serif;
+  font-size: 1.1rem;
+  color: #222;
+  text-align: center;
+}
+
+.item-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+
+.item-option {
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 12px;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-option:hover {
+  background: #fff0f0;
+}
+
+.item-option.selected {
+  background: #fff0f0;
+  border: 2px solid #b85c5c;
+}
+
+.item-image {
+  width: 80px;
+  height: 80px;
+  background: #e5e2de;
+  border-radius: 8px;
+}
+
+.item-name {
+  font-family: 'Manrope', Arial, sans-serif;
+  font-size: 0.9rem;
+  color: #222;
+  text-align: center;
+}
+
+.swap-arrow {
+  color: #b85c5c;
+  font-size: 1.5rem;
+  padding: 1rem;
+}
+
+.message-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.message-section label {
+  font-family: 'Manrope', Arial, sans-serif;
+  font-size: 1rem;
+  color: #222;
+}
+
+.message-section textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid #e5e2de;
+  border-radius: 12px;
+  font-family: 'Manrope', Arial, sans-serif;
+  font-size: 0.95rem;
+  resize: vertical;
+  min-height: 100px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.message-section textarea:focus {
+  border-color: #b85c5c;
+}
+
+.submit-swap {
+  background: #b85c5c;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 0.8rem;
+  font-family: 'Manrope', Arial, sans-serif;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submit-swap:hover:not(:disabled) {
+  background: #d36c6c;
+}
+
+.submit-swap:disabled {
+  background: #e5e2de;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .swap-offer-content {
+    padding: 1.5rem;
+  }
+  
+  .swap-items {
+    flex-direction: column;
+  }
+  
+  .swap-arrow {
+    transform: rotate(90deg);
+  }
+  
+  .items-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+} 
