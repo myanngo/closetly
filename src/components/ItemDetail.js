@@ -92,12 +92,12 @@ const ItemDetail = () => {
   }, [itemId]);
 
   const handleStyleInput = () => {
-    // Navigate to style input page - you can implement this
+    //TODO
     navigate(`/item/${itemId}/style-input`);
   };
 
   const handleOfferSwap = () => {
-    // Navigate to swap offer page - you can implement this
+    // TODO
     navigate(`/item/${itemId}/offer-swap`);
   };
 
