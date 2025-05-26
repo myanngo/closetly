@@ -3,28 +3,49 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 60px;
+  height: 70px;
   background: #fff;
   box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
   display: flex;
   justify-content: space-around;
   align-items: center;
   z-index: 100;
+  padding-bottom: 12px;
+}
+
+.nav-icon-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 1.1rem;
+}
+
+.nav-label {
+  font-size: 0.93rem;
+  font-family: "Manrope", Arial, sans-serif;
+  color: #ff3b3f;
+  margin-top: 2px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  user-select: none;
 }
 
 .bottom-nav a {
-  color: #b85c5c;
+  color: #ff3b3f;
   font-size: 2rem;
   text-decoration: none;
-  padding: 0.5rem 1.2rem;
-  border-radius: 50%;
+  padding: 0.5rem 1.2rem 0.2rem 1.2rem;
+  border-radius: 18px;
   transition: background 0.2s, color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 60px;
 }
 
 .bottom-nav a.active, .bottom-nav a:hover {
-  background: #fff0f0;
-  color: #d36c6c;
+  background: #ffeaea;
+  color: #ff3b3f;
 } 

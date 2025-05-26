@@ -4,7 +4,6 @@
   max-width: 95vw;
   max-height: 80vw;
   background: #fff;
-  border: 1.5px solid #e5e2de;
   border-radius: 5px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1), 0 1.5px 0 #f3e9e0 inset;
   display: flex;
@@ -28,7 +27,7 @@
 
 .postcard-v2-user {
   font-family: "Instrument Serif", serif;
-  color: #b85c5c;
+  color: #ff3b3f;
   font-size: 1.08rem;
   margin-bottom: 0.4rem;
   text-align: left;
@@ -83,7 +82,7 @@
   gap: 0.3em;
   background: none;
   border: none;
-  color: #b85c5c;
+  color: #ff3b3f;
   font-size: 1.1rem;
   cursor: pointer;
   margin-top: 0.7rem;
@@ -93,18 +92,19 @@
 }
 
 .postcard-like-btn .liked {
-  color: #e74c3c;
+  color: #ff3b3f;
 }
 
 .postcard-like-count {
   font-size: 0.98rem;
-  color: #b85c5c;
+  color: #ff3b3f;
 }
 
 .postcard-actions {
   display: flex;
   gap: 1rem;
   margin-top: 0.7rem;
+  align-items: center;
 }
 
 .postcard-comment-btn {
@@ -113,8 +113,9 @@
   gap: 0.3em;
   background: none;
   border: none;
-  color: #b85c5c;
+  color: #ff3b3f;
   font-size: 1.1rem;
+  margin-top: 0.7rem;
   cursor: pointer;
   padding: 0;
   outline: none;
@@ -122,12 +123,12 @@
 }
 
 .postcard-comment-btn:hover {
-  color: #d36c6c;
+  color: #ff6b81;
 }
 
 .postcard-comment-count {
   font-size: 0.98rem;
-  color: #b85c5c;
+  color: #ff3b3f;
 }
 
 .postcard-comments {
@@ -147,14 +148,14 @@
 
 .comment-user {
   font-family: "Instrument Serif", serif;
-  color: #b85c5c;
+  color: #ff3b3f;
   font-size: 0.95rem;
 }
 
 .comment-text {
   font-family: "Manrope", Arial, sans-serif;
   font-size: 0.95rem;
-  color: #222;
+  color: #ff6b81;
 }
 
 .comment-form {
@@ -175,11 +176,11 @@
 }
 
 .comment-input:focus {
-  border-color: #b85c5c;
+  border-color: #ff3b3f;
 }
 
 .comment-submit {
-  background: #b85c5c;
+  background: #ff3b3f;
   color: white;
   border: none;
   border-radius: 50%;
@@ -193,7 +194,7 @@
 }
 
 .comment-submit:hover {
-  background: #d36c6c;
+  background: #ff6b81;
 }
 
 @media (max-width: 500px) {
@@ -206,4 +207,58 @@
     min-width: 0;
     min-height: 0;
   }
+}
+
+.postcard-comments-below {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin: 0 auto 1.2rem auto;
+  max-width: 360px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.sticky-tab {
+  background: #fff0f5;
+  border-radius: 8px 10px 10px 8px;
+  box-shadow: 0 2px 8px rgba(180, 140, 60, 0.1), 0 1.5px 0 #f3e9e0 inset;
+  padding: 0.7rem 1.1rem 0.7rem 1.1rem;
+  min-width: 0;
+  max-width: 100%;
+  width: 90%;
+  font-family: "Manrope", Arial, sans-serif;
+  font-size: 1rem;
+  margin: 0;
+  position: relative;
+  border-left: 6px solid #ffb3b3;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.sticky-tab:nth-child(even) {
+  background: #ffeaea;
+  border-left: 6px solid #ffb3b3;
+}
+
+.sticky-tab .comment-user {
+  font-family: "Instrument Serif", serif;
+  color: #ff3b3f;
+  font-size: 0.97rem;
+  margin-bottom: 0;
+  margin-right: 0.7rem;
+  white-space: nowrap;
+}
+
+.sticky-tab .comment-text {
+  color: #ff6b81;
+  font-size: 0.97rem;
+  word-break: break-word;
+}
+
+.postcard-comment-btn.active {
+  color: #ff3b3f;
+  font-weight: bold;
 }

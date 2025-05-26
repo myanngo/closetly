@@ -1,7 +1,7 @@
 .home-feed {
   padding: 1.5rem 1rem 4rem 1rem;
   font-family: "Inter", Arial, sans-serif;
-  background: #f9f6f2;
+  background: #fefaf1;
   min-height: 100vh;
 }
 
@@ -16,12 +16,12 @@
 .swap-header {
   font-size: 1rem;
   margin-bottom: 0.5rem;
-  color: #b85c5c;
+  color: #ff3b3f;
   font-weight: 500;
 }
 
 .item-name {
-  color: #d36c6c;
+  color: #ff3b3f;
   margin-left: 0.5rem;
   font-weight: 600;
 }
@@ -40,7 +40,7 @@
 .story-photo-placeholder {
   flex: 1;
   height: 70px;
-  background: #e5e2de;
+  background: #ffeaea;
   border-radius: 8px;
   margin-left: 1rem;
 }
@@ -62,7 +62,7 @@
 }
 
 .swap-actions button:hover {
-  background: #b85c5c;
+  background: #ff3b3f;
 }
 
 .feed-toggle {
@@ -77,7 +77,7 @@
   border: none;
   font-family: "Manrope", Arial, sans-serif;
   font-size: 1.1rem;
-  color: #b85c5c;
+  color: #ff3b3f;
   padding: 0.4rem 1.2rem;
   border-radius: 20px;
   cursor: pointer;
@@ -86,8 +86,8 @@
 
 .feed-toggle button.active,
 .feed-toggle button:hover {
-  background: #fff0f0;
-  color: #d36c6c;
+  background: #ffe1e1;
+  color: #ff3b3f;
   font-weight: 600;
 }
 
@@ -96,14 +96,24 @@
   flex-direction: column;
   align-items: center;
   margin-bottom: 2.2rem;
-  animation: slideWiggle 0.7s cubic-bezier(.7,-0.2,.5,1.5) both;
+  animation: slideWiggle 0.7s cubic-bezier(0.7, -0.2, 0.5, 1.5) both;
 }
 
-.feed-post-container:nth-child(1) { animation-delay: 0.05s; }
-.feed-post-container:nth-child(2) { animation-delay: 0.15s; }
-.feed-post-container:nth-child(3) { animation-delay: 0.25s; }
-.feed-post-container:nth-child(4) { animation-delay: 0.35s; }
-.feed-post-container:nth-child(5) { animation-delay: 0.45s; }
+.feed-post-container:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.feed-post-container:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.feed-post-container:nth-child(3) {
+  animation-delay: 0.25s;
+}
+.feed-post-container:nth-child(4) {
+  animation-delay: 0.35s;
+}
+.feed-post-container:nth-child(5) {
+  animation-delay: 0.45s;
+}
 
 @keyframes slideWiggle {
   0% {
@@ -121,4 +131,124 @@
     opacity: 1;
     transform: translateY(0) rotate(0deg) scale(1);
   }
+}
+
+.offers-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 59, 63, 0.1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offers-modal {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 2rem 1.5rem 1.5rem 1.5rem;
+  min-width: 320px;
+  max-width: 95vw;
+  width: 400px;
+  position: relative;
+  z-index: 1010;
+  animation: modalIn 0.18s cubic-bezier(0.4, 2, 0.6, 1) both;
+}
+
+.offers-modal-full {
+  width: 98vw;
+  max-width: 600px;
+  min-width: 0;
+  min-height: 60vh;
+  margin: 0 1vw;
+  padding: 2.2rem 2vw 2.2rem 2vw;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+@media (max-width: 700px) {
+  .offers-modal-full {
+    width: 99vw;
+    max-width: 99vw;
+    margin: 0 0.5vw;
+    padding: 1.2rem 2vw 1.2rem 2vw;
+  }
+}
+
+.offers-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: #ff3b3f;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: 50%;
+  padding: 2px 8px;
+  min-width: 24px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.home-header-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 0.5rem 0.7rem 0.5rem;
+  background: #fefaf1;
+  margin-bottom: 0.7rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.home-header-logo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: "Instrument Serif", serif;
+  font-weight: 500;
+  font-size: 2rem;
+  color: #ff3b3f;
+  letter-spacing: -1px;
+  user-select: none;
+}
+
+.closetly-text {
+  font-family: "Instrument Serif", serif;
+  font-weight: 500;
+  font-size: 2rem;
+  color: #ff3b3f;
+  letter-spacing: -1px;
+  margin-top: 2px;
+}
+
+@media (max-width: 600px) {
+  .home-header-bar {
+    padding: 0.7rem 0.2rem 0.7rem 0.7rem;
+    border-radius: 0 0 12px 12px;
+  }
+  .home-header-logo {
+    font-size: 1.1rem;
+    gap: 0.4rem;
+  }
+  .closetly-text {
+    font-size: 1.4rem;
+  }
+}
+
+.sticky-tab {
+  background: #fefaf1;
+}
+.sticky-tab:nth-child(even) {
+  background: #ffe1e1;
 }

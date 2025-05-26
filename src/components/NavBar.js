@@ -9,16 +9,25 @@ const NavBar = () => {
   return (
     <nav className="bottom-nav">
       <Link to="/" className={location.pathname === "/" ? "active" : ""}>
-        <FontAwesomeIcon icon={faHome} />
+        <div className="nav-icon-label">
+          <FontAwesomeIcon icon={faHome} />
+          <span className="nav-label">Home</span>
+        </div>
       </Link>
       <Link to="/add" className={location.pathname === "/add" ? "active" : ""}>
-        <FontAwesomeIcon icon={faPlus} />
+        <div className="nav-icon-label">
+          <FontAwesomeIcon icon={faPlus} />
+          <span className="nav-label">Add</span>
+        </div>
       </Link>
       <Link
         to="/profile"
         className={location.pathname === "/profile" ? "active" : ""}
       >
-        <FontAwesomeIcon icon={faUser} />
+        <div className="nav-icon-label">
+          <FontAwesomeIcon icon={faUser} />
+          <span className="nav-label">Profile</span>
+        </div>
       </Link>
     </nav>
   );

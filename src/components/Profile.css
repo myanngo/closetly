@@ -1,7 +1,7 @@
 .profile-page {
   padding: 1.5rem 1.5rem 4rem 1.5rem;
   font-family: "Manrope", Arial, sans-serif;
-  background: #f9f6f2;
+  background: #fff0f5;
   min-height: 100vh;
   max-width: 600px;
   margin: 0 auto;
@@ -11,13 +11,14 @@
   display: flex;
   align-items: center;
   gap: 1.2rem;
+  margin-top: 4rem;
   margin-bottom: 1.5rem;
 }
 
 .avatar-placeholder {
   width: 90px;
   height: 90px;
-  background: #b85c5c;
+  background: #ff3b3f;
   font-family: "Instrument Serif", serif;
   border-radius: 50%;
   aspect-ratio: 1;
@@ -27,13 +28,13 @@
   justify-content: center;
   font-weight: bold;
   font-size: 28px;
-  color: #fffbf1;
+  color: #fff0f5;
   text-transform: uppercase;
 }
 
 .profile-name {
   font-family: "Instrument Serif", serif;
-  font-size: 1.3rem;
+  font-size: 2rem;
   font-weight: 400;
   text-align: left;
 }
@@ -67,6 +68,7 @@
   font-size: 1.1rem;
   margin-bottom: 0.3rem;
   text-align: left;
+  color: #ff3b3f;
 }
 
 .friends-list {
@@ -85,13 +87,13 @@
   align-items: center;
   justify-content: center;
   font-size: 1.4rem;
-  color: #b85c5c;
+  color: #ff3b3f;
   aspect-ratio: 1;
 }
 
 .friend-avatar.add {
-  background: #fff0f0;
-  border: 1.5px dashed #b85c5c;
+  background: #ffeaea;
+  border: 1.5px dashed #ff3b3f;
   cursor: pointer;
 }
 
@@ -141,7 +143,7 @@
 
 .carousel-item-name {
   font-size: 0.98rem;
-  color: #b85c5c;
+  color: #ff3b3f;
   text-align: center;
   font-family: "Manrope", Arial, sans-serif;
 }
@@ -156,7 +158,7 @@
 }
 
 .stat-number {
-  color: #d36c6c;
+  color: #ff3b3f;
   font-size: 2.2rem;
   font-family: "Instrument Serif", serif;
   font-weight: 700;
@@ -188,6 +190,6 @@
 }
 
 .log-out-text {
-  color: #b85c5c;
+  color: #ff3b3f;
   text-decoration: underline;
 }
