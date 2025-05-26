@@ -1,6 +1,6 @@
 .profile-page {
   padding: 1.5rem 1.5rem 4rem 1.5rem;
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   background: #f9f6f2;
   min-height: 100vh;
   max-width: 600px;
@@ -17,14 +17,22 @@
 .avatar-placeholder {
   width: 90px;
   height: 90px;
-  background: #e5e2de;
+  background: #b85c5c;
+  font-family: "Instrument Serif", serif;
   border-radius: 50%;
   aspect-ratio: 1;
   object-fit: cover;
+  display: flex; /* center text */
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 28px;
+  color: #fffbf1;
+  text-transform: uppercase;
 }
 
 .profile-name {
-  font-family: 'Instrument Serif', serif;
+  font-family: "Instrument Serif", serif;
   font-size: 1.3rem;
   font-weight: 400;
   text-align: left;
@@ -44,7 +52,7 @@
   color: #444;
   margin-top: 0.2rem;
   margin-bottom: 0.2rem;
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   text-align: left;
 }
 
@@ -54,7 +62,7 @@
 }
 
 .profile-friends-label {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-weight: 700;
   font-size: 1.1rem;
   margin-bottom: 0.3rem;
@@ -94,7 +102,7 @@
 }
 
 .carousel-label {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-weight: 700;
   font-size: 1.1rem;
   margin-bottom: 0.5rem;
@@ -116,7 +124,7 @@
   max-width: 120px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -135,7 +143,7 @@
   font-size: 0.98rem;
   color: #b85c5c;
   text-align: center;
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
 }
 
 .profile-stats {
@@ -150,7 +158,7 @@
 .stat-number {
   color: #d36c6c;
   font-size: 2.2rem;
-  font-family: 'Instrument Serif', serif;
+  font-family: "Instrument Serif", serif;
   font-weight: 700;
   margin-right: 0.7rem;
   filter: drop-shadow(0 0 8px #ffeaea);
@@ -159,16 +167,27 @@
 }
 
 .stat-number::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('../assets/gradientcircle.png');
+  background-image: url("../assets/gradientcircle.png");
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
   z-index: -1;
   opacity: 0.8;
-} 
+}
+
+.log-out {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.log-out-text {
+  color: #b85c5c;
+  text-decoration: underline;
+}

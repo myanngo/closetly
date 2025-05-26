@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const { signIn } = useAuth();
   const navigate = useNavigate();
@@ -14,7 +14,7 @@ const Login = () => {
     try {
       const { error } = await signIn({ email, password });
       if (error) throw error;
-      navigate('/');
+      navigate("/");
     } catch (error) {
       setError(error.message);
     }
@@ -77,10 +77,16 @@ const Login = () => {
               Sign in
             </button>
           </div>
+
+          <div>
+            <p>
+              not signed up? <a href="signup">make an account now</a>
+            </p>
+          </div>
         </form>
       </div>
     </div>
   );
 };
 
-export default Login; 
+export default Login;

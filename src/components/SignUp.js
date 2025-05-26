@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const SignUp = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const { signUp } = useAuth();
   const navigate = useNavigate();
@@ -12,9 +12,12 @@ const SignUp = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { error } = await signUp({ email, password });
+      const { error } = await signUp({
+        email,
+        password,
+      });
       if (error) throw error;
-      navigate('/login');
+      navigate("/verify");
     } catch (error) {
       setError(error.message);
     }
@@ -83,4 +86,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp; 
+export default SignUp;

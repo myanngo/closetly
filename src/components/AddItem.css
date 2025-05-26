@@ -1,0 +1,65 @@
+.add-page {
+  padding: 1.5rem 1.5rem 4rem 1.5rem;
+  font-family: "Manrope", Arial, sans-serif;
+  background: #f9f6f2;
+  min-height: 100vh;
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.picture-upload {
+  justify-content: center;
+  align-content: center;
+  height: 30rem;
+  width: 100%;
+  border-style: solid;
+  border-color: #d9d9d9;
+  background-color: white;
+}
+
+.subheader {
+  font-family: "Manrope", Arial, sans-serif;
+  display: flex;
+  align-self: flex-start;
+  text-align: left;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 0.3rem;
+}
+
+.input-box {
+  width: 100%;
+  height: 20rem;
+  font-family: "Manrope", Arial, sans-serif;
+  border-color: #d9d9d9;
+  border-style: dashed;
+  border-width: 0.1rem;
+}
+
+.input-box-small {
+  width: 100%;
+  font-family: "Manrope", Arial, sans-serif;
+  border-color: #d9d9d9;
+  border-width: 0.1rem;
+}
+
+.dropdown {
+  width: 10rem;
+  margin-left: 2rem;
+  border-style: hidden;
+  font-family: "Manrope", Arial, sans-serif;
+  padding: 2px;
+}
+
+.post-button {
+  margin: 2rem;
+  font-family: "Manrope", Arial, sans-serif;
+  background-color: #db0000;
+  color: white;
+  width: 10rem;
+  padding: 0.5rem;
+  border-radius: 1.5rem;
+  border-style: hidden;
+}
