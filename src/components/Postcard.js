@@ -6,7 +6,7 @@ import { faHeart as regularHeart } from "@fortawesome/free-regular-svg-icons";
 import { faComment, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { faCommentDots } from "@fortawesome/free-regular-svg-icons";
 
-const Postcard = ({ user, text, image, initialLikes = 0 }) => {
+const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false }) => {
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
   const [comments, setComments] = useState([]);
@@ -49,29 +49,31 @@ const Postcard = ({ user, text, image, initialLikes = 0 }) => {
               </div>
             ))}
           </div>
-          <div className="postcard-actions">
-            <button
-              className="postcard-like-btn"
-              onClick={handleLike}
-              aria-label="Like"
-            >
-              <FontAwesomeIcon
-                icon={liked ? solidHeart : regularHeart}
-                className={liked ? "liked" : ""}
-              />
-              <span className="postcard-like-count">{likes}</span>
-            </button>
-            <button
-              className={`postcard-comment-btn${showComments ? " active" : ""}`}
-              onClick={() => setShowComments(!showComments)}
-              aria-label="Comments"
-            >
-              <FontAwesomeIcon
-                icon={showComments ? faComment : faCommentDots}
-              />
-              <span className="postcard-comment-count">{comments.length}</span>
-            </button>
-          </div>
+          {!hideActions && (
+            <div className="postcard-actions">
+              <button
+                className="postcard-like-btn"
+                onClick={handleLike}
+                aria-label="Like"
+              >
+                <FontAwesomeIcon
+                  icon={liked ? solidHeart : regularHeart}
+                  className={liked ? "liked" : ""}
+                />
+                <span className="postcard-like-count">{likes}</span>
+              </button>
+              <button
+                className={`postcard-comment-btn${showComments ? " active" : ""}`}
+                onClick={() => setShowComments(!showComments)}
+                aria-label="Comments"
+              >
+                <FontAwesomeIcon
+                  icon={showComments ? faComment : faCommentDots}
+                />
+                <span className="postcard-comment-count">{comments.length}</span>
+              </button>
+            </div>
+          )}
         </div>
         <div className="postcard-v2-right">
           {image ? (
@@ -81,7 +83,7 @@ const Postcard = ({ user, text, image, initialLikes = 0 }) => {
           )}
         </div>
       </div>
-      {showComments && (
+      {!hideActions && showComments && (
         <div className="postcard-comments-below">
           {comments.map((comment) => (
             <div key={comment.id} className="postcard-comment sticky-tab">

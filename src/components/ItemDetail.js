@@ -292,11 +292,8 @@ const ItemDetail = () => {
       )}
 
       <div className="item-detail-actions">
-        <button className="style-btn" onClick={handleStyleInput}>
-          <FontAwesomeIcon icon={faPlus} /> give style input
-        </button>
         {currentUsername && currentUsername !== currentOwner && (
-          <button className="swap-btn" onClick={() => setShowOfferModal(true)}>
+          <button className="swap-btn black-btn" onClick={() => setShowOfferModal(true)}>
             <FontAwesomeIcon icon={faExchangeAlt} /> make offer
           </button>
         )}

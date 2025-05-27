@@ -9,7 +9,7 @@
   display: flex;
   overflow: hidden;
   position: relative;
-  margin-bottom: 1.2rem;
+  margin-bottom: 0.3rem;
   margin-left: auto;
   margin-right: auto;
 }
@@ -155,13 +155,17 @@
 .comment-text {
   font-family: "Manrope", Arial, sans-serif;
   font-size: 0.95rem;
-  color: #ff6b81;
+  color: #222;
+  background: #FEFAF1;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  display: inline-block;
 }
 
 .comment-form {
   display: flex;
   gap: 0.5rem;
-  margin-top: 0.5rem;
+  margin-top: 0.2rem;
 }
 
 .comment-input {
@@ -212,7 +216,7 @@
 .postcard-comments-below {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.3rem;
   margin: 0 auto 1.2rem auto;
   max-width: 360px;
   width: 100%;
@@ -220,7 +224,7 @@
 }
 
 .sticky-tab {
-  background: #fff0f5;
+  background: #FEFAF1;
   border-radius: 8px 10px 10px 8px;
   box-shadow: 0 2px 8px rgba(180, 140, 60, 0.1), 0 1.5px 0 #f3e9e0 inset;
   padding: 0.7rem 1.1rem 0.7rem 1.1rem;
@@ -231,7 +235,7 @@
   font-size: 1rem;
   margin: 0;
   position: relative;
-  border-left: 6px solid #ffb3b3;
+  border-left: none;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -239,8 +243,8 @@
 }
 
 .sticky-tab:nth-child(even) {
-  background: #ffeaea;
-  border-left: 6px solid #ffb3b3;
+  background: #FEFAF1;
+  border-left: none;
 }
 
 .sticky-tab .comment-user {
@@ -253,9 +257,13 @@
 }
 
 .sticky-tab .comment-text {
-  color: #ff6b81;
+  color: #222;
+  background: #FEFAF1;
   font-size: 0.97rem;
   word-break: break-word;
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  display: inline-block;
 }
 
 .postcard-comment-btn.active {

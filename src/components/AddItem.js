@@ -2,6 +2,10 @@ import React, { useState, useEffect } from "react";
 import "./AddItem.css";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../config/supabaseClient";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlus, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import clothesHanger from "../assets/clothesonhanger.png";
+import Postcard from "./Postcard";
 
 const AddItem = () => {
   const [title, setTitle] = useState("");
@@ -10,11 +14,15 @@ const AddItem = () => {
   const [size, setSize] = useState("");
   const [brand, setBrand] = useState("");
   const [wear, setWear] = useState("");
-  const [letgo, setLetgo] = useState("");
+  const [letgo, setLetgo] = useState([]);
   const [pictureFile, setPictureFile] = useState(null);
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState("");
+  const [userItems, setUserItems] = useState([]);
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [step, setStep] = useState(0);
 
   const navigate = useNavigate();
 
@@ -49,7 +57,19 @@ const AddItem = () => {
       }
     };
     fetchUser();
-  }, []);
+
+    // Fetch user's items for story mode
+    const fetchUserItems = async () => {
+      if (!username) return;
+      const { data, error } = await supabase
+        .from("posts")
+        .select("post_id, title, brand, size")
+        .eq("giver", username)
+        .is("receiver", null);
+      if (!error && data) setUserItems(data);
+    };
+    if (mode === "story" && username) fetchUserItems();
+  }, [username, mode]);
 
   const uploadImage = async () => {
     if (!pictureFile) return null;
@@ -101,26 +121,34 @@ const AddItem = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      // Basic validation
-      if (!title.trim()) {
-        throw new Error("Title is required");
+      if (mode === "story") {
+        if (!selectedItemId) throw new Error("Please select an item");
+        if (!story.trim()) throw new Error("Story is required");
+        // Upload image if provided
+        const imageUrl = await uploadImage();
+        // Insert a new post for the existing item
+        const { error: insertError } = await supabase.from("posts").insert({
+          post_id: selectedItemId,
+          story: story.trim(),
+          picture: imageUrl,
+          giver: username,
+        });
+        if (insertError)
+          throw new Error("Failed to add story: " + insertError.message);
+        navigate("/");
+        return;
       }
-
-      if (!username) {
+      // ... existing add new item logic ...
+      if (!title.trim()) throw new Error("Title is required");
+      if (!username)
         throw new Error(
           "User information not loaded. Please refresh and try again."
         );
-      }
-
-      // Upload image and get next post ID
       const [imageUrl, post_id] = await Promise.all([
         uploadImage(),
         getNextPostId(),
       ]);
-
-      // Insert the post - make sure to include all fields that you're collecting
       const { error: insertError } = await supabase.from("posts").insert({
         title: title.trim(),
         story: story.trim(),
@@ -130,138 +158,361 @@ const AddItem = () => {
         giver: username,
         picture: imageUrl,
         post_id,
-        letgo_method: letgo,
+        letgo_method: letgo.join(','),
       });
-
-      if (insertError) {
-        console.error("Error inserting post:", insertError);
+      if (insertError)
         throw new Error("Failed to create post: " + insertError.message);
-      }
-
-      // Success - navigate back
       navigate("/");
     } catch (err) {
-      console.error("Submit error:", err);
       setError(err.message || "An error occurred while creating your post");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="add-page">
-      <h2>Add a Story or Item</h2>
+  const renderPreview = (isStory) => {
+    if (isStory) {
+      const item = userItems.find((i) => i.post_id === selectedItemId);
+      return (
+        <div className="add-preview">
+          <div className="add-title">Preview your story</div>
+          <Postcard
+            user={`@${username}${item ? ` - ${item.title}` : ""}`}
+            text={story}
+            image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
+            initialLikes={0}
+            hideActions={true}
+          />
+        </div>
+      );
+    } else {
+      return (
+        <div className="add-preview">
+          <div className="add-title">Preview your item</div>
+          <Postcard
+            user={`@${username}`}
+            text={story}
+            image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
+            initialLikes={0}
+            hideActions={true}
+          />
+          <div style={{ margin: '1.2rem 0', textAlign: 'center' }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>Item Details</div>
+            <div><b>Brand:</b> {brand}</div>
+            <div><b>Size:</b> {size}</div>
+            <div><b>Wear:</b> {wear}</div>
+          </div>
+        </div>
+      );
+    }
+  };
 
-      {error && (
+  if (step === 0) {
+    return (
+      <div className="add-bg">
+        <div className="add-title">What would you like to add?</div>
+        <img
+          src={clothesHanger}
+          alt="clothes on hanger"
+          className="add-illustration"
+        />
         <div
           style={{
-            color: "red",
-            background: "#ffebee",
-            padding: "10px",
-            borderRadius: "4px",
-            marginBottom: "20px",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.5rem",
+            marginTop: "1.5rem",
           }}
         >
-          {error}
+          <button
+            className="add-btn add-select-btn"
+            style={{ fontSize: "1.2rem" }}
+            onClick={() => { setMode("new"); setStep(1); }}
+          >
+            <FontAwesomeIcon icon={faPlus} style={{ marginRight: 10 }} />
+            Add a new item
+          </button>
+          <button
+            className="add-btn add-select-btn"
+            style={{ fontSize: "1.2rem", background: "#222", color: "#fff" }}
+            onClick={() => { setMode("story"); setStep(1); }}
+          >
+            <FontAwesomeIcon icon={faPen} style={{ marginRight: 10 }} />
+            Add a story to an existing item
+          </button>
         </div>
-      )}
-
-      <div className="picture-upload">
-        <p>Upload a picture here (ex. an outfit with item)</p>
-        <br />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={(e) => setPictureFile(e.target.files[0])}
-        />
       </div>
+    );
+  }
 
-      <form onSubmit={handleSubmit}>
-        <label className="subheader">Title *</label>
-        <textarea
-          className="input-box-small"
-          placeholder="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
-
-        <label className="subheader">Story</label>
-        <textarea
-          className="input-box"
-          placeholder="Tell us a bit more about this piece..."
-          value={story}
-          onChange={(e) => setStory(e.target.value)}
-        />
-
-        <label className="subheader">
-          Item Type
-          <select
-            className="dropdown"
-            value={itemType}
-            onChange={(e) => setItemType(e.target.value)}
+  if (mode === "story") {
+    if (step === 1) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => setStep(0)}
           >
-            <option value="">Select</option>
-            <option value="top">Top</option>
-            <option value="bottom">Bottom</option>
-            <option value="shoes">Shoes</option>
-            <option value="accessory">Accessory</option>
-          </select>
-        </label>
-
-        <label className="subheader">
-          Size
-          <input
-            className="dropdown"
-            placeholder="Enter Size"
-            value={size}
-            onChange={(e) => setSize(e.target.value)}
-          />
-        </label>
-
-        <label className="subheader">
-          Brand
-          <input
-            className="dropdown"
-            placeholder="Enter Brand Name"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-          />
-        </label>
-
-        <label className="subheader">
-          Wear
-          <select
-            className="dropdown"
-            value={wear}
-            onChange={(e) => setWear(e.target.value)}
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          <div className="add-title">Add a Story to an Item</div>
+          {error && <div className="add-error">{error}</div>}
+          <form className="add-form" onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
+            <label className="subheader">Select Item</label>
+            <select
+              className="add-select"
+              value={selectedItemId}
+              onChange={(e) => setSelectedItemId(e.target.value)}
+              required
+            >
+              <option value="">Choose an item...</option>
+              {userItems.map((item) => (
+                <option key={item.post_id} value={item.post_id}>
+                  {item.title} {item.brand && `(${item.brand})`} {item.size && `- Size ${item.size}`}
+                </option>
+              ))}
+            </select>
+            <label className="subheader">Story</label>
+            <textarea
+              className="add-textarea"
+              placeholder="Tell us a bit more about this piece..."
+              value={story}
+              onChange={(e) => setStory(e.target.value)}
+              required
+            />
+            <div className="picture-upload">
+              <p>Upload a picture (optional)</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPictureFile(e.target.files[0])}
+              />
+            </div>
+            <button type="submit" className="add-btn" style={{ background: '#222', color: '#fff' }}>preview</button>
+          </form>
+        </div>
+      );
+    }
+    if (step === 2) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => setStep(1)}
           >
-            <option value="">Select</option>
-            <option value="excellent">Excellent</option>
-            <option value="fair">Fair</option>
-            <option value="poor">Poor</option>
-          </select>
-        </label>
-
-        <label className="subheader">
-          How do you want to let this go?
-          <select
-            className="dropdown"
-            value={letgo}
-            onChange={(e) => setLetgo(e.target.value)}
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          {renderPreview(true)}
+          <button
+            className="add-btn"
+            style={{ background: '#222', color: '#fff', marginTop: 24 }}
+            onClick={async () => {
+              setLoading(true);
+              setError("");
+              try {
+                const imageUrl = pictureFile ? await uploadImage() : null;
+                const { error: insertError } = await supabase.from("posts").insert({
+                  post_id: selectedItemId,
+                  story: story.trim(),
+                  picture: imageUrl,
+                  giver: username,
+                });
+                if (insertError) throw new Error("Failed to add story: " + insertError.message);
+                navigate("/");
+              } catch (err) {
+                setError(err.message || "An error occurred while creating your post");
+              } finally {
+                setLoading(false);
+              }
+            }}
           >
-            <option value="">Select</option>
-            <option value="give-away">Give Away</option>
-            <option value="swap">Swap</option>
-          </select>
-        </label>
+            post
+          </button>
+          {error && <div className="add-error">{error}</div>}
+        </div>
+      );
+    }
+  }
 
-        <button type="submit" className="post-button" disabled={loading}>
-          {loading ? "Posting..." : "Post"}
-        </button>
-      </form>
-    </div>
-  );
+  if (mode === "new") {
+    if (step === 1) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => setStep(0)}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          <div className="add-title">Add an item</div>
+          {error && <div className="add-error">{error}</div>}
+          <form className="add-form" onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
+            <div className="picture-upload">
+              <p>Upload a photo for your story here (e.g. an outfit with item)</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPictureFile(e.target.files[0])}
+              />
+              {pictureFile && (
+                <img src={URL.createObjectURL(pictureFile)} alt="preview" className="big-image-preview" />
+              )}
+            </div>
+            <label className="subheader">Title</label>
+            <input
+              className="add-input"
+              placeholder="What is this? White skirt? Denim jeans?"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+            <label className="subheader">Story</label>
+            <textarea
+              className="add-textarea"
+              placeholder="Tell a story. Where adventures have you been on with this item?"
+              value={story}
+              onChange={(e) => setStory(e.target.value)}
+              required
+            />
+            <button type="submit" className="add-btn" style={{ background: '#222', color: '#fff' }}>next</button>
+          </form>
+        </div>
+      );
+    }
+    if (step === 2) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => setStep(1)}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          <div className="add-title">Add item details</div>
+          {error && <div className="add-error">{error}</div>}
+          <form className="add-form" onSubmit={(e) => { e.preventDefault(); setStep(3); }}>
+            <label className="subheader">Item Type</label>
+            <select
+              className="add-select"
+              value={itemType}
+              onChange={(e) => setItemType(e.target.value)}
+              required
+            >
+              <option value="">Select</option>
+              <option value="top">Top</option>
+              <option value="bottom">Bottom</option>
+              <option value="shoes">Shoes</option>
+              <option value="accessory">Accessory</option>
+            </select>
+            <label className="subheader">Size</label>
+            <input
+              className="add-input"
+              placeholder="Enter Size"
+              value={size}
+              onChange={(e) => setSize(e.target.value)}
+              required
+            />
+            <label className="subheader">Brand</label>
+            <input
+              className="add-input"
+              placeholder="Enter Brand Name"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value)}
+              required
+            />
+            <label className="subheader">Wear</label>
+            <select
+              className="add-select"
+              value={wear}
+              onChange={(e) => setWear(e.target.value)}
+              required
+            >
+              <option value="">Select</option>
+              <option value="excellent">Excellent</option>
+              <option value="good">Good</option>
+              <option value="average">Average</option>
+              <option value="fair">Fair</option>
+              <option value="poor">Poor</option>
+            </select>
+            <label className="subheader">How do you want to let this go?</label>
+            <div className="letgo-options">
+              {['give-away', 'lend', 'swap'].map(option => (
+                <label key={option} className={`letgo-btn${letgo.includes(option) ? ' selected' : ''}`}> 
+                  <input
+                    type="checkbox"
+                    value={option}
+                    checked={letgo.includes(option)}
+                    onChange={(e) => {
+                      if (e.target.checked) setLetgo([...letgo, option]);
+                      else setLetgo(letgo.filter(l => l !== option));
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                  {option === 'give-away' ? 'Give Away' : option.charAt(0).toUpperCase() + option.slice(1)}
+                </label>
+              ))}
+            </div>
+            <button type="submit" className="add-btn" style={{ background: '#222', color: '#fff' }}>preview</button>
+          </form>
+        </div>
+      );
+    }
+    if (step === 3) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => setStep(2)}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          {renderPreview(false)}
+          <button
+            className="add-btn"
+            style={{ background: '#222', color: '#fff', marginTop: 24 }}
+            onClick={async () => {
+              setLoading(true);
+              setError("");
+              try {
+                const [imageUrl, post_id] = await Promise.all([
+                  pictureFile ? uploadImage() : null,
+                  getNextPostId(),
+                ]);
+                const { error: insertError } = await supabase.from("posts").insert({
+                  title: title.trim(),
+                  story: story.trim(),
+                  brand: brand.trim(),
+                  size: size.trim(),
+                  wear,
+                  giver: username,
+                  picture: imageUrl,
+                  post_id,
+                  letgo_method: letgo.join(','),
+                });
+                if (insertError) throw new Error("Failed to create post: " + insertError.message);
+                navigate("/");
+              } catch (err) {
+                setError(err.message || "An error occurred while creating your post");
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
+            post
+          </button>
+          {error && <div className="add-error">{error}</div>}
+        </div>
+      );
+    }
+  }
+
+  return null;
 };
 
 export default AddItem;

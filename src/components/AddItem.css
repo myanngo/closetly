@@ -9,14 +9,108 @@
   flex-direction: column;
 }
 
-.picture-upload {
-  justify-content: center;
-  align-content: center;
-  height: 30rem;
+.add-bg {
+  min-height: 100vh;
+  background: #fefaf1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100vw;
+  padding: 0 0 5.5rem 0;
+  box-sizing: border-box;
+}
+
+.add-title {
+  font-family: "Instrument Serif", serif;
+  font-size: 2rem;
+  color: #ff3b3f;
+  font-weight: 500;
+  letter-spacing: -1px;
+  margin-bottom: 1.2rem;
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.add-illustration {
+  display: block;
+  margin: 0 auto 1.2rem auto;
+  max-width: 120px;
+  width: 40vw;
+}
+
+.add-form {
+  width: 90vw;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-bottom: 3.5rem;
+}
+
+.add-input,
+.add-textarea,
+.add-select {
   width: 100%;
-  border-style: solid;
-  border-color: #d9d9d9;
-  background-color: white;
+  padding: 1.1rem 1.1rem;
+  font-size: 1.1rem;
+  border: 1.5px solid #ffe1e1;
+  border-radius: 12px;
+  background: #fefaf1;
+  font-family: "Manrope", Arial, sans-serif;
+  transition: border-color 0.2s;
+  margin-bottom: 0.2rem;
+  box-sizing: border-box;
+}
+.add-input:focus,
+.add-textarea:focus,
+.add-select:focus {
+  border-color: #ff3b3f;
+  outline: none;
+}
+
+.add-btn {
+  width: 100%;
+  background: #ff3b3f;
+  color: #fff;
+  font-size: 1.15rem;
+  font-family: "Manrope", Arial, sans-serif;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  padding: 1.1rem 0;
+  margin-top: 0.2rem;
+  margin-bottom: 0.2rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(255, 59, 63, 0.06);
+  transition: background 0.18s;
+}
+.add-btn:hover {
+  background: #ff6b81;
+}
+
+.add-error {
+  background: #ffe1e1;
+  color: #ff3b3f;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.picture-upload {
+  width: 90vw;
+  max-width: 420px;
+  background: #fefaf1;
+  border-radius: 12px;
+  border: 1.5px dashed #ffe1e1;
+  padding: 1.2rem 1rem;
+  margin: 0 auto 1.2rem auto;
+  text-align: center;
+  font-family: "Manrope", Arial, sans-serif;
+  color: #b85c5c;
 }
 
 .subheader {
@@ -62,4 +156,111 @@
   padding: 0.5rem;
   border-radius: 1.5rem;
   border-style: hidden;
+}
+
+.add-select-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  font-size: 1.2rem;
+  padding: 1.1rem 0;
+  margin: 0 auto;
+  max-width: 420px;
+}
+
+.add-back-btn {
+  position: static;
+  margin: 1.2rem 0 0 1.2rem;
+  background: none;
+  border: none;
+  color: #b85c5c;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+  padding: 0.3rem 0.7rem;
+  border-radius: 50%;
+  transition: background 0.15s;
+  align-self: flex-start;
+}
+.add-back-btn:hover {
+  background: #ffeaea;
+}
+
+@media (max-width: 600px) {
+  .add-bg {
+    min-height: 100vh;
+    height: auto;
+    background: #fefaf1;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 100vw;
+    padding: 0 0 5.5rem 0;
+    box-sizing: border-box;
+  }
+  .add-title {
+    font-size: 1.5rem;
+    margin-top: 1.2rem;
+  }
+  .add-illustration {
+    max-width: 90px;
+    width: 50vw;
+    margin-bottom: 1rem;
+  }
+  .add-form, .picture-upload {
+    width: 96vw;
+    max-width: 98vw;
+    margin-left: auto;
+    margin-right: auto;
+    padding-bottom: 3.5rem;
+  }
+  .big-image-preview {
+    max-width: 98vw;
+    aspect-ratio: 3 / 4;
+    max-height: 320px;
+  }
+}
+
+.letgo-options {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0 1.2rem 0;
+  justify-content: center;
+}
+.letgo-btn {
+  border: 2px solid #ff3b3f;
+  border-radius: 16px;
+  padding: 0.7rem 1.3rem;
+  font-size: 1.1rem;
+  color: #ff3b3f;
+  background: #fefaf1;
+  font-family: "Manrope", Arial, sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  user-select: none;
+  outline: none;
+  margin-bottom: 0;
+  margin-top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.letgo-btn.selected {
+  background: #ff3b3f;
+  color: #fff;
+  border-color: #ff3b3f;
+}
+
+.big-image-preview {
+  display: block;
+  margin: 1.2rem auto 0.5rem auto;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 3 / 4;
+  max-height: 420px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(255,59,63,0.08);
+  background: #e5e2de;
 }

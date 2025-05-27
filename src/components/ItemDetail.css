@@ -265,3 +265,13 @@
 .comment-submit:hover {
   background: #ff6b81;
 }
+
+.black-btn {
+  background: #222 !important;
+  color: #fff !important;
+  border: none !important;
+}
+.black-btn:hover {
+  background: #444 !important;
+  color: #fff !important;
+}
