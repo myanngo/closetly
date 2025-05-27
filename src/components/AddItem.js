@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./AddItem.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../config/supabaseClient";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
@@ -25,6 +25,7 @@ const AddItem = () => {
   const [step, setStep] = useState(0);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -70,6 +71,17 @@ const AddItem = () => {
     };
     if (mode === "story" && username) fetchUserItems();
   }, [username, mode]);
+
+  // Pre-select story mode and item if itemId is in query string
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const itemId = params.get("itemId");
+    if (itemId) {
+      setMode("story");
+      setStep(1);
+      setSelectedItemId(itemId);
+    }
+  }, [location.search]);
 
   const uploadImage = async () => {
     if (!pictureFile) return null;
@@ -158,7 +170,7 @@ const AddItem = () => {
         giver: username,
         picture: imageUrl,
         post_id,
-        letgo_method: letgo.join(','),
+        letgo_method: letgo.join(","),
       });
       if (insertError)
         throw new Error("Failed to create post: " + insertError.message);
@@ -182,6 +194,7 @@ const AddItem = () => {
             image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
             initialLikes={0}
             hideActions={true}
+            post_id={selectedItemId || 0}
           />
         </div>
       );
@@ -195,12 +208,19 @@ const AddItem = () => {
             image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
             initialLikes={0}
             hideActions={true}
+            post_id={0}
           />
-          <div style={{ margin: '1.2rem 0', textAlign: 'center' }}>
+          <div style={{ margin: "1.2rem 0", textAlign: "center" }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Item Details</div>
-            <div><b>Brand:</b> {brand}</div>
-            <div><b>Size:</b> {size}</div>
-            <div><b>Wear:</b> {wear}</div>
+            <div>
+              <b>Brand:</b> {brand}
+            </div>
+            <div>
+              <b>Size:</b> {size}
+            </div>
+            <div>
+              <b>Wear:</b> {wear}
+            </div>
           </div>
         </div>
       );
@@ -228,7 +248,10 @@ const AddItem = () => {
           <button
             className="add-btn add-select-btn"
             style={{ fontSize: "1.2rem" }}
-            onClick={() => { setMode("new"); setStep(1); }}
+            onClick={() => {
+              setMode("new");
+              setStep(1);
+            }}
           >
             <FontAwesomeIcon icon={faPlus} style={{ marginRight: 10 }} />
             Add a new item
@@ -236,7 +259,10 @@ const AddItem = () => {
           <button
             className="add-btn add-select-btn"
             style={{ fontSize: "1.2rem", background: "#222", color: "#fff" }}
-            onClick={() => { setMode("story"); setStep(1); }}
+            onClick={() => {
+              setMode("story");
+              setStep(1);
+            }}
           >
             <FontAwesomeIcon icon={faPen} style={{ marginRight: 10 }} />
             Add a story to an existing item
@@ -259,7 +285,13 @@ const AddItem = () => {
           </button>
           <div className="add-title">Add a Story to an Item</div>
           {error && <div className="add-error">{error}</div>}
-          <form className="add-form" onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
+          <form
+            className="add-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setStep(2);
+            }}
+          >
             <label className="subheader">Select Item</label>
             <select
               className="add-select"
@@ -270,7 +302,8 @@ const AddItem = () => {
               <option value="">Choose an item...</option>
               {userItems.map((item) => (
                 <option key={item.post_id} value={item.post_id}>
-                  {item.title} {item.brand && `(${item.brand})`} {item.size && `- Size ${item.size}`}
+                  {item.title} {item.brand && `(${item.brand})`}{" "}
+                  {item.size && `- Size ${item.size}`}
                 </option>
               ))}
             </select>
@@ -290,7 +323,13 @@ const AddItem = () => {
                 onChange={(e) => setPictureFile(e.target.files[0])}
               />
             </div>
-            <button type="submit" className="add-btn" style={{ background: '#222', color: '#fff' }}>preview</button>
+            <button
+              type="submit"
+              className="add-btn"
+              style={{ background: "#222", color: "#fff" }}
+            >
+              preview
+            </button>
           </form>
         </div>
       );
@@ -308,22 +347,29 @@ const AddItem = () => {
           {renderPreview(true)}
           <button
             className="add-btn"
-            style={{ background: '#222', color: '#fff', marginTop: 24 }}
+            style={{ background: "#222", color: "#fff", marginTop: 24 }}
             onClick={async () => {
               setLoading(true);
               setError("");
               try {
                 const imageUrl = pictureFile ? await uploadImage() : null;
-                const { error: insertError } = await supabase.from("posts").insert({
-                  post_id: selectedItemId,
-                  story: story.trim(),
-                  picture: imageUrl,
-                  giver: username,
-                });
-                if (insertError) throw new Error("Failed to add story: " + insertError.message);
+                const { error: insertError } = await supabase
+                  .from("posts")
+                  .insert({
+                    post_id: selectedItemId,
+                    story: story.trim(),
+                    picture: imageUrl,
+                    giver: username,
+                  });
+                if (insertError)
+                  throw new Error(
+                    "Failed to add story: " + insertError.message
+                  );
                 navigate("/");
               } catch (err) {
-                setError(err.message || "An error occurred while creating your post");
+                setError(
+                  err.message || "An error occurred while creating your post"
+                );
               } finally {
                 setLoading(false);
               }
@@ -350,16 +396,28 @@ const AddItem = () => {
           </button>
           <div className="add-title">Add an item</div>
           {error && <div className="add-error">{error}</div>}
-          <form className="add-form" onSubmit={(e) => { e.preventDefault(); setStep(2); }}>
+          <form
+            className="add-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setStep(2);
+            }}
+          >
             <div className="picture-upload">
-              <p>Upload a photo for your story here (e.g. an outfit with item)</p>
+              <p>
+                Upload a photo for your story here (e.g. an outfit with item)
+              </p>
               <input
                 type="file"
                 accept="image/*"
                 onChange={(e) => setPictureFile(e.target.files[0])}
               />
               {pictureFile && (
-                <img src={URL.createObjectURL(pictureFile)} alt="preview" className="big-image-preview" />
+                <img
+                  src={URL.createObjectURL(pictureFile)}
+                  alt="preview"
+                  className="big-image-preview"
+                />
               )}
             </div>
             <label className="subheader">Title</label>
@@ -373,12 +431,18 @@ const AddItem = () => {
             <label className="subheader">Story</label>
             <textarea
               className="add-textarea"
-              placeholder="Tell a story. Where adventures have you been on with this item?"
+              placeholder="Tell a story. What adventures have you been on with this item?"
               value={story}
               onChange={(e) => setStory(e.target.value)}
               required
             />
-            <button type="submit" className="add-btn" style={{ background: '#222', color: '#fff' }}>next</button>
+            <button
+              type="submit"
+              className="add-btn"
+              style={{ background: "#222", color: "#fff" }}
+            >
+              next
+            </button>
           </form>
         </div>
       );
@@ -395,7 +459,13 @@ const AddItem = () => {
           </button>
           <div className="add-title">Add item details</div>
           {error && <div className="add-error">{error}</div>}
-          <form className="add-form" onSubmit={(e) => { e.preventDefault(); setStep(3); }}>
+          <form
+            className="add-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setStep(3);
+            }}
+          >
             <label className="subheader">Item Type</label>
             <select
               className="add-select"
@@ -441,23 +511,36 @@ const AddItem = () => {
             </select>
             <label className="subheader">How do you want to let this go?</label>
             <div className="letgo-options">
-              {['give-away', 'lend', 'swap'].map(option => (
-                <label key={option} className={`letgo-btn${letgo.includes(option) ? ' selected' : ''}`}> 
+              {["give-away", "lend", "swap"].map((option) => (
+                <label
+                  key={option}
+                  className={`letgo-btn${
+                    letgo.includes(option) ? " selected" : ""
+                  }`}
+                >
                   <input
                     type="checkbox"
                     value={option}
                     checked={letgo.includes(option)}
                     onChange={(e) => {
                       if (e.target.checked) setLetgo([...letgo, option]);
-                      else setLetgo(letgo.filter(l => l !== option));
+                      else setLetgo(letgo.filter((l) => l !== option));
                     }}
-                    style={{ display: 'none' }}
+                    style={{ display: "none" }}
                   />
-                  {option === 'give-away' ? 'Give Away' : option.charAt(0).toUpperCase() + option.slice(1)}
+                  {option === "give-away"
+                    ? "Give Away"
+                    : option.charAt(0).toUpperCase() + option.slice(1)}
                 </label>
               ))}
             </div>
-            <button type="submit" className="add-btn" style={{ background: '#222', color: '#fff' }}>preview</button>
+            <button
+              type="submit"
+              className="add-btn"
+              style={{ background: "#222", color: "#fff" }}
+            >
+              preview
+            </button>
           </form>
         </div>
       );
@@ -475,7 +558,7 @@ const AddItem = () => {
           {renderPreview(false)}
           <button
             className="add-btn"
-            style={{ background: '#222', color: '#fff', marginTop: 24 }}
+            style={{ background: "#222", color: "#fff", marginTop: 24 }}
             onClick={async () => {
               setLoading(true);
               setError("");
@@ -484,21 +567,28 @@ const AddItem = () => {
                   pictureFile ? uploadImage() : null,
                   getNextPostId(),
                 ]);
-                const { error: insertError } = await supabase.from("posts").insert({
-                  title: title.trim(),
-                  story: story.trim(),
-                  brand: brand.trim(),
-                  size: size.trim(),
-                  wear,
-                  giver: username,
-                  picture: imageUrl,
-                  post_id,
-                  letgo_method: letgo.join(','),
-                });
-                if (insertError) throw new Error("Failed to create post: " + insertError.message);
+                const { error: insertError } = await supabase
+                  .from("posts")
+                  .insert({
+                    title: title.trim(),
+                    story: story.trim(),
+                    brand: brand.trim(),
+                    size: size.trim(),
+                    wear,
+                    giver: username,
+                    picture: imageUrl,
+                    post_id,
+                    letgo_method: letgo.join(","),
+                  });
+                if (insertError)
+                  throw new Error(
+                    "Failed to create post: " + insertError.message
+                  );
                 navigate("/");
               } catch (err) {
-                setError(err.message || "An error occurred while creating your post");
+                setError(
+                  err.message || "An error occurred while creating your post"
+                );
               } finally {
                 setLoading(false);
               }

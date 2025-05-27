@@ -102,10 +102,10 @@ const HomeFeed = () => {
       // Get all posts where current user is the owner (giver, receiver null)
       const { data: myItems } = await supabase
         .from("posts")
-        .select("id")
+        .select("post_id")
         .eq("giver", currentUser.username)
         .is("receiver", null);
-      const myItemIds = (myItems || []).map((item) => item.id);
+      const myItemIds = (myItems || []).map((item) => item.post_id);
       if (myItemIds.length === 0) {
         setPendingOffers([]);
         return;
@@ -313,7 +313,9 @@ const HomeFeed = () => {
               user={`@${post.receiver || "someone"}`}
               text={post.story || "Received this amazing item!"}
               image={post.picture}
-              initialLikes={0} // You can add a likes field to your posts table later
+              initialLikes={0}
+              hideActions={false}
+              post_id={post.post_id}
             />
 
             <div className="swap-actions">

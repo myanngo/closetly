@@ -25,7 +25,7 @@ const ItemHistory = () => {
         const { data: postsData, error: postsError } = await supabase
           .from("posts")
           .select("*")
-          .eq("post_id", itemId)
+          .eq("post_id", Number(itemId))
           .order("created_at", { ascending: true }); // Oldest first to show chronological history
 
         if (postsError) {
@@ -117,6 +117,8 @@ const ItemHistory = () => {
                 text={post.story}
                 image={post.picture}
                 initialLikes={0}
+                hideActions={false}
+                post_id={post.post_id}
               />
             );
           })}

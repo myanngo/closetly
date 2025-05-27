@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Postcard.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as solidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as regularHeart } from "@fortawesome/free-regular-svg-icons";
 import { faComment, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { faCommentDots } from "@fortawesome/free-regular-svg-icons";
+import { supabase } from "../config/supabaseClient";
+import { useAuth } from "../context/AuthContext";
 
-const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false }) => {
+const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, post_id }) => {
+  const { user: authUser, username = "" } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
   const [comments, setComments] = useState([]);
@@ -16,25 +19,77 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false }) 
   // Split text into lines for postcard effect
   const lines = text.split(/(?<=\.|!|\?)\s|\n/).filter(Boolean);
 
-  const handleLike = () => {
-    setLiked((l) => !l);
-    setLikes((l) => (liked ? l - 1 : l + 1));
+  useEffect(() => {
+    if (!post_id) return;
+    // Likes
+    const fetchLikesAndComments = async () => {
+      const { data: likesData } = await supabase
+        .from("likes")
+        .select("user_id")
+        .eq("post_id", post_id);
+      setLikes(likesData ? likesData.length : 0);
+      setLiked(
+        !!(
+          likesData &&
+          authUser &&
+          likesData.some((like) => like.user_id === authUser.id)
+        )
+      );
+      // Comments
+      const { data: commentsData } = await supabase
+        .from("comments")
+        .select("id, user_id, username, text, created_at")
+        .eq("post_id", post_id)
+        .order("created_at", { ascending: true });
+      setComments(commentsData || []);
+    };
+    fetchLikesAndComments();
+  }, [post_id, authUser]);
+
+  if (typeof post_id !== 'number' || !post_id) return null;
+
+  // Like/unlike logic
+  const handleLike = async () => {
+    if (!authUser) return;
+    if (liked) {
+      // Unlike
+      await supabase
+        .from("likes")
+        .delete()
+        .eq("post_id", post_id)
+        .eq("user_id", authUser.id);
+      setLiked(false);
+      setLikes((l) => l - 1);
+    } else {
+      // Like
+      await supabase.from("likes").insert({
+        post_id,
+        user_id: authUser.id,
+        username: username || "",
+      });
+      setLiked(true);
+      setLikes((l) => l + 1);
+    }
   };
 
-  const handleAddComment = (e) => {
+  // Add comment logic
+  const handleAddComment = async (e) => {
     e.preventDefault();
-    if (newComment.trim()) {
-      setComments([
-        ...comments,
-        {
-          id: Date.now(),
-          user: "@currentuser", // This would come from auth context
-          text: newComment,
-          timestamp: new Date(),
-        },
-      ]);
-      setNewComment("");
-    }
+    if (!newComment.trim() || !authUser) return;
+    await supabase.from("comments").insert({
+      post_id,
+      user_id: authUser.id,
+      username: username || "",
+      text: newComment.trim(),
+    });
+    setNewComment("");
+    // Refetch comments
+    const { data: commentsData } = await supabase
+      .from("comments")
+      .select("id, user_id, username, text, created_at")
+      .eq("post_id", post_id)
+      .order("created_at", { ascending: true });
+    setComments(commentsData || []);
   };
 
   return (
@@ -87,7 +142,7 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false }) 
         <div className="postcard-comments-below">
           {comments.map((comment) => (
             <div key={comment.id} className="postcard-comment sticky-tab">
-              <span className="comment-user">{comment.user}</span>
+              <span className="comment-user">@{comment.username || "user"}</span>
               <span className="comment-text">{comment.text}</span>
             </div>
           ))}

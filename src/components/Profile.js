@@ -92,7 +92,7 @@ const Profile = () => {
   };
 
   const handleItemClick = (item) => {
-    navigate(`/item/${item.id}`);
+    navigate(`/item/${item.post_id}`);
   };
 
   if (loading) {

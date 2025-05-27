@@ -5,22 +5,40 @@ const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active sessions and sets the user
+    let isMounted = true;
+    async function fetchUserAndUsername(session) {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        const { data } = await supabase
+          .from("users")
+          .select("username")
+          .eq("id", session.user.id)
+          .single();
+        if (isMounted) setUsername(data?.username || "");
+      } else {
+        if (isMounted) setUsername("");
+      }
+      if (isMounted) setLoading(false);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      fetchUserAndUsername(session);
     });
 
-    // Listen for changes on auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        fetchUserAndUsername(session);
+      }
+    );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      if (subscription) subscription.unsubscribe();
+    };
   }, []);
 
   const value = {
@@ -28,6 +46,7 @@ export const AuthProvider = ({ children }) => {
     signIn: (data) => supabase.auth.signInWithPassword(data),
     signOut: () => supabase.auth.signOut(),
     user,
+    username,
   };
 
   return (

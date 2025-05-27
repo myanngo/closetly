@@ -46,7 +46,7 @@ const ItemDetail = () => {
         const { data: postsData, error: postsError } = await supabase
           .from("posts")
           .select("*")
-          .eq("post_id", itemId)
+          .eq("post_id", Number(itemId))
           .order("created_at", { ascending: true }); // Oldest first to find starter
 
         if (postsError) {
@@ -272,6 +272,8 @@ const ItemDetail = () => {
             text={latestStory.text}
             image={latestStory.photo}
             initialLikes={0}
+            hideActions={false}
+            post_id={item.post_id}
           />
         </div>
       ) : (
@@ -292,6 +294,14 @@ const ItemDetail = () => {
       )}
 
       <div className="item-detail-actions">
+        {currentUsername && currentUsername === currentOwner && (
+          <button
+            className="add-story-btn black-btn"
+            onClick={() => navigate(`/add?itemId=${itemId}`)}
+          >
+            <FontAwesomeIcon icon={faPlus} /> add a story
+          </button>
+        )}
         {currentUsername && currentUsername !== currentOwner && (
           <button className="swap-btn black-btn" onClick={() => setShowOfferModal(true)}>
             <FontAwesomeIcon icon={faExchangeAlt} /> make offer
