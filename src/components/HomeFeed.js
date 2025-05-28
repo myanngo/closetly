@@ -99,91 +99,50 @@ const HomeFeed = () => {
     fetchData();
   }, []);
 
-  // Fetch pending offers and accepted offers
+  // Fetch pending offers for items the user owns
   useEffect(() => {
     const fetchOffers = async () => {
       if (!currentUser) return;
-
       try {
-        // Get all latest posts for each item_id (thread)
-        const { data: latestPosts, error: latestPostsError } = await supabase
-          .from("posts")
-          .select("item_id, post_id, giver, receiver, created_at, title")
-          .order("item_id", { ascending: true })
-          .order("created_at", { ascending: false });
-
-        if (latestPostsError) {
-          console.error("Error fetching latest posts:", latestPostsError);
-          setPendingOffers([]);
-          setAcceptedOffers([]);
-          return;
-        }
-
-        // For each item_id, keep only the latest post (by created_at)
-        const latestByItem = {};
-        for (const post of latestPosts) {
-          if (!latestByItem[post.item_id || post.post_id]) {
-            latestByItem[post.item_id || post.post_id] = post;
-          }
-        }
-
-        // Find item_ids where current user is the current owner
-        const myItemIds = Object.values(latestByItem)
-          .filter(
-            (post) =>
-              (post.receiver && post.receiver === currentUser.username) ||
-              (!post.receiver && post.giver === currentUser.username)
-          )
-          .map((post) => post.item_id || post.post_id);
-
-        if (myItemIds.length === 0) {
-          setPendingOffers([]);
-          setAcceptedOffers([]);
-          return;
-        }
-
-        // Get pending offers for items I own
-        const { data: pendingOffersData, error: pendingError } = await supabase
+        // First fetch the offers
+        const { data: offers, error: offersError } = await supabase
           .from("offers")
-          .select(
-            `
-            *,
-            swap_item:swap_item_id(title, brand, size, picture)
-          `
-          )
-          .in("item_id", myItemIds)
+          .select("*")
+          .eq("to_user", currentUser.username)
           .eq("status", "pending");
 
-        if (pendingError) {
-          console.error("Error fetching pending offers:", pendingError);
-        } else {
-          setPendingOffers(pendingOffersData || []);
+        if (offersError) {
+          console.error("Error fetching offers:", offersError);
+          setPendingOffers([]);
+          return;
         }
 
-        // Get accepted offers where I need to create a post (I'm the offer-er)
-        const { data: acceptedOffersData, error: acceptedError } =
-          await supabase
-            .from("offers")
-            .select(
-              `
-            *,
-            original_item:item_id(title, post_id)
-          `
-            )
-            .eq("from_user", currentUser.username)
-            .eq("status", "accepted")
-            .eq("post_created", false);
+        // Then fetch the items for each offer
+        const offersWithItems = await Promise.all(
+          offers.map(async (offer) => {
+            const { data: item, error: itemError } = await supabase
+              .from("items")
+              .select(
+                "id, title, brand, size, wear, current_owner, original_owner"
+              )
+              .eq("id", offer.item_id)
+              .single();
 
-        if (acceptedError) {
-          console.error("Error fetching accepted offers:", acceptedError);
-        } else {
-          setAcceptedOffers(acceptedOffersData || []);
-        }
+            if (itemError) {
+              console.error("Error fetching item:", itemError);
+              return { ...offer, item: null };
+            }
+
+            return { ...offer, item };
+          })
+        );
+
+        setPendingOffers(offersWithItems || []);
       } catch (err) {
         console.error("Error in fetchOffers:", err);
+        setPendingOffers([]);
       }
     };
-
     fetchOffers();
   }, [currentUser]);
 
@@ -191,11 +150,11 @@ const HomeFeed = () => {
   const stories = feed === "all" ? allPosts : friendsPosts;
 
   const handleViewItem = (post) => {
-    navigate(`/item/${post.post_id}`);
+    navigate(`/item/${post.item_id}`);
   };
 
   const handleViewHistory = (post) => {
-    navigate(`/item/${post.post_id}/history`);
+    navigate(`/item/${post.item_id}/history`);
   };
 
   // Accept offer logic
@@ -268,20 +227,39 @@ const HomeFeed = () => {
 
       // Get original item details
       const { data: originalItem } = await supabase
-        .from("posts")
-        .select("title, post_id")
-        .eq("post_id", offer.item_id)
-        .order("created_at", { ascending: false })
-        .limit(1);
+        .from("items")
+        .select("id, title, brand, size, wear, letgo_method")
+        .eq("id", offer.item_id)
+        .single();
 
-      if (originalItem && originalItem.length > 0) {
+      if (originalItem) {
+        // Create new item entry
+        const { data: newItem, error: itemError } = await supabase
+          .from("items")
+          .insert({
+            title: originalItem.title,
+            brand: originalItem.brand,
+            size: originalItem.size,
+            wear: originalItem.wear,
+            current_owner: offer.to_user,
+            original_owner: offer.from_user,
+            letgo_method: originalItem.letgo_method,
+          })
+          .select()
+          .single();
+
+        if (itemError) {
+          console.error("Error creating item:", itemError);
+          throw itemError;
+        }
+
         // Navigate to add item page with pre-filled data
         navigate(
           `/add?mode=received&itemId=${
-            originalItem[0].post_id
+            newItem.id
           }&title=${encodeURIComponent(
-            originalItem[0].title
-          )}&giver=${encodeURIComponent(offer.to_user)}`
+            originalItem.title
+          )}&giver=${encodeURIComponent(offer.from_user)}`
         );
       }
 
@@ -443,8 +421,9 @@ const HomeFeed = () => {
                 image={post.picture}
                 initialLikes={0}
                 hideActions={false}
-                post_id={post.post_id}
+                post_id={post.item_id}
                 id={post.id}
+                created_at={post.created_at}
               />
             </div>
 
@@ -471,17 +450,48 @@ const HomeFeed = () => {
             className="offers-modal offers-modal-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2
-              style={{
-                marginBottom: 18,
-                fontSize: "1.7rem",
-                color: "#ff3b3f",
-                fontWeight: 500,
-                letterSpacing: "-1px",
-              }}
-            >
-              Swap Offers
-            </h2>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowOffersModal(false)}
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  background: "none",
+                  border: "none",
+                  fontSize: "1.5rem",
+                  color: "#666",
+                  cursor: "pointer",
+                  padding: "5px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "30px",
+                  height: "30px",
+                  borderRadius: "50%",
+                  transition: "background-color 0.2s",
+                }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.backgroundColor = "#f0f0f0")
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.backgroundColor = "transparent")
+                }
+              >
+                ×
+              </button>
+              <h2
+                style={{
+                  marginBottom: 18,
+                  fontSize: "1.9rem",
+                  color: "#ff3b3f",
+                  fontWeight: 500,
+                  letterSpacing: "-1px",
+                }}
+              >
+                Swap Offers
+              </h2>
+            </div>
             {offerActionError && (
               <div style={{ color: "#c83f3f", marginBottom: 10 }}>
                 {offerActionError}
@@ -491,7 +501,13 @@ const HomeFeed = () => {
             {/* Pending Offers Section */}
             {pendingOffers.length > 0 && (
               <div style={{ marginBottom: 30 }}>
-                <h3 style={{ color: "#333", marginBottom: 15 }}>
+                <h3
+                  style={{
+                    color: "#333",
+                    marginBottom: 15,
+                    fontSize: "1.5rem",
+                  }}
+                >
                   Pending Offers for Your Items
                 </h3>
                 {pendingOffers.map((offer, idx) => (
@@ -499,29 +515,34 @@ const HomeFeed = () => {
                     key={offer.id || idx}
                     className="offer-row"
                     style={{
-                      borderBottom: "1px solid #eee",
-                      padding: "12px 0",
+                      borderBottom: "2px solid #eee",
+                      padding: "20px 0",
                       marginBottom: 8,
                     }}
                   >
-                    <div style={{ fontSize: "1.1rem", marginBottom: 8 }}>
-                      <b>@{offer.from_user}</b> wants to{" "}
-                      <b>{offer.offer_type}</b> your item
+                    <div
+                      style={{
+                        fontSize: "1.1rem",
+                        marginBottom: 8,
+                        fontFamily: "Manrope",
+                      }}
+                    >
+                      <b>@{offer.from_user}</b>{" "}
+                      {(() => {
+                        if (offer.offer_type === "giveaway")
+                          return "wants to receive this item from you";
+                        if (offer.offer_type === "lend")
+                          return "wants to borrow your item";
+                        if (offer.offer_type === "swap")
+                          return "offered a swap for your item";
+                        return "sent an offer for your item";
+                      })()}{" "}
+                      {offer.item && (
+                        <span style={{ color: "#b85c5c" }}>
+                          <b>({offer.item.title})</b>
+                        </span>
+                      )}
                     </div>
-
-                    {offer.offer_type === "swap" && offer.swap_item && (
-                      <div style={{ marginBottom: 8, fontStyle: "italic" }}>
-                        Offering: {offer.swap_item.title}{" "}
-                        {offer.swap_item.brand && `(${offer.swap_item.brand})`}
-                      </div>
-                    )}
-
-                    {offer.lend_duration && (
-                      <div style={{ marginBottom: 8 }}>
-                        Duration: {offer.lend_duration}
-                      </div>
-                    )}
-
                     {offer.message && (
                       <div
                         style={{
@@ -533,53 +554,78 @@ const HomeFeed = () => {
                         "{offer.message}"
                       </div>
                     )}
-
-                    <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 12,
+                        marginTop: 8,
+                        justifyContent: "center",
+                      }}
+                    >
                       <button
-                        onClick={() => handleAcceptOffer(offer)}
-                        disabled={offerActionLoading === offer.id}
                         style={{
-                          background: "#2e8b57",
+                          background: "#000",
                           color: "#fff",
                           border: "none",
-                          borderRadius: 6,
+                          borderRadius: 30,
                           padding: "8px 18px",
-                          fontWeight: 500,
-                          fontSize: "1.08rem",
+                          fontWeight: 600,
+                          fontSize: "0.8rem",
+                          fontFamily: "Manrope",
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
-                          opacity: offerActionLoading === offer.id ? 0.7 : 1,
-                          cursor:
-                            offerActionLoading === offer.id
-                              ? "not-allowed"
-                              : "pointer",
+                          cursor: "pointer",
+                        }}
+                        onClick={() => {
+                          if (offer.contact_method && offer.contact_info) {
+                            window.alert(
+                              `Contact @${offer.from_user} via ${offer.contact_method}: ${offer.contact_info}`
+                            );
+                          } else {
+                            window.alert("No contact info provided.");
+                          }
                         }}
                       >
-                        <FontAwesomeIcon icon={faCheck} /> Accept
+                        Contact
+                      </button>
+                      <button
+                        onClick={() => handleAcceptOffer(offer)}
+                        style={{
+                          background: "#fff",
+                          color: "#c83f3f",
+                          border: "1px solid #c83f3f",
+                          borderRadius: 30,
+                          padding: "8px 18px",
+                          fontWeight: 600,
+                          fontSize: "0.8rem",
+                          fontFamily: "Manrope",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Accept
                       </button>
                       <button
                         onClick={() => handleRejectOffer(offer)}
-                        disabled={offerActionLoading === offer.id}
                         style={{
                           background: "#c83f3f",
                           color: "#fff",
                           border: "none",
-                          borderRadius: 6,
+                          borderRadius: 30,
                           padding: "8px 18px",
-                          fontWeight: 500,
-                          fontSize: "1.08rem",
+                          fontWeight: 600,
+                          fontSize: "0.8rem",
+                          fontFamily: "Manrope",
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
-                          opacity: offerActionLoading === offer.id ? 0.7 : 1,
-                          cursor:
-                            offerActionLoading === offer.id
-                              ? "not-allowed"
-                              : "pointer",
+                          cursor: "pointer",
                         }}
                       >
-                        <FontAwesomeIcon icon={faTimes} /> Reject
+                        Reject
                       </button>
                     </div>
                   </div>
@@ -654,24 +700,6 @@ const HomeFeed = () => {
                 No pending offers for your items.
               </div>
             )}
-
-            <button
-              onClick={() => setShowOffersModal(false)}
-              style={{
-                marginTop: 16,
-                background: "#eee",
-                color: "#b85c5c",
-                border: "none",
-                borderRadius: 6,
-                padding: "10px 22px",
-                fontWeight: 500,
-                fontSize: "1.1rem",
-                alignSelf: "center",
-                width: "30%",
-              }}
-            >
-              Close
-            </button>
           </div>
         </div>
       )}

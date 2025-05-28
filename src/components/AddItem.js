@@ -73,10 +73,9 @@ const AddItem = () => {
     const fetchUserItems = async () => {
       if (!username) return;
       const { data, error } = await supabase
-        .from("posts")
-        .select("post_id, title, brand, size")
-        .eq("giver", username)
-        .is("receiver", null);
+        .from("items")
+        .select("id, title, brand, size")
+        .eq("current_owner", username);
       if (!error && data) setUserItems(data);
     };
     if (mode === "story" && username) fetchUserItems();
@@ -191,7 +190,7 @@ const AddItem = () => {
         const imageUrl = await uploadImage();
         // Insert a new post for the existing item
         const { error: insertError } = await supabase.from("posts").insert({
-          post_id: selectedItemId,
+          item_id: selectedItemId,
           story: story.trim(),
           picture: imageUrl,
           giver: username,
@@ -212,19 +211,72 @@ const AddItem = () => {
         uploadImage(),
         getNextPostId(),
       ]);
-      const { error: insertError } = await supabase.from("posts").insert({
-        title: title.trim(),
-        story: story.trim(),
-        brand: brand.trim(),
-        size: size.trim(),
-        wear,
-        giver: username,
-        picture: imageUrl,
-        post_id,
-        available_for: letgo.map((l) => (l === "give-away" ? "giveaway" : l)),
-      });
-      if (insertError)
+
+      // First create the post
+      const { data: itemData, error: itemError } = await supabase
+        .from("items")
+        .insert({
+          title: title.trim(),
+          brand: brand.trim(),
+          size: size.trim(),
+          wear,
+          current_owner: username,
+          original_owner: username,
+          latest_post_id: post_id,
+          letgo_method: letgo.map((l) => (l === "give-away" ? "giveaway" : l)),
+        })
+        .select()
+        .single();
+
+      if (itemError) {
+        console.error("Error creating item:", itemError);
+        // If item creation fails, we should delete the post to maintain consistency
+        await supabase.from("posts").delete().eq("post_id", post_id);
+        throw new Error("Failed to create item: " + itemError.message);
+      }
+
+      // Then create the post with the item's id
+      const { data: postData, error: insertError } = await supabase
+        .from("posts")
+        .insert({
+          title: title.trim(),
+          story: story.trim(),
+          brand: brand.trim(),
+          size: size.trim(),
+          wear,
+          giver: username,
+          picture: imageUrl,
+          item_id: itemData.id,
+          letgo_method: letgo.map((l) =>
+            l === "give-away" ? "giveaway" : l
+          ),
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Error creating post:", insertError);
+        // If post creation fails, we should delete the item to maintain consistency
+        await supabase.from("items").delete().eq("id", itemData.id);
         throw new Error("Failed to create post: " + insertError.message);
+      }
+
+      // Update the item with the latest post id
+      const { error: updateError } = await supabase
+        .from("items")
+        .update({ latest_post_id: postData.id })
+        .eq("id", itemData.id);
+
+      if (updateError) {
+        console.error("Error updating item:", updateError);
+        // If update fails, we should clean up both the post and item
+        await supabase.from("posts").delete().eq("id", postData.id);
+        await supabase.from("items").delete().eq("id", itemData.id);
+        throw new Error("Failed to update item: " + updateError.message);
+      }
+
+      console.log("Successfully created item and post:", itemData);
+
       navigate("/");
     } catch (err) {
       setError(err.message || "An error occurred while creating your post");
@@ -264,7 +316,7 @@ const AddItem = () => {
     }
 
     if (isStory) {
-      const item = userItems.find((i) => i.post_id === selectedItemId);
+      const item = userItems.find((i) => i.id === selectedItemId);
       return (
         <div className="add-preview">
           <div className="add-title">Preview your story</div>
@@ -527,7 +579,7 @@ const AddItem = () => {
             >
               <option value="">Choose an item...</option>
               {userItems.map((item) => (
-                <option key={item.post_id} value={item.post_id}>
+                <option key={item.id} value={item.id}>
                   {item.title} {item.brand && `(${item.brand})`}{" "}
                   {item.size && `- Size ${item.size}`}
                 </option>
@@ -582,7 +634,7 @@ const AddItem = () => {
                 const { error: insertError } = await supabase
                   .from("posts")
                   .insert({
-                    post_id: selectedItemId,
+                    item_id: selectedItemId,
                     story: story.trim(),
                     picture: imageUrl,
                     giver: username,
@@ -763,10 +815,89 @@ const AddItem = () => {
             <button
               type="submit"
               className="add-btn"
-              style={{ background: "#222", color: "#fff" }}
+              style={{ background: "#222", color: "#fff", marginTop: 24 }}
+              onClick={async () => {
+                setLoading(true);
+                setError("");
+                try {
+                  const imageUrl = pictureFile ? await uploadImage() : null;
+
+                  // First create the item entry
+                  const { data: itemData, error: itemError } = await supabase
+                    .from("items")
+                    .insert({
+                      title: title.trim(),
+                      brand: brand.trim(),
+                      size: size.trim(),
+                      wear,
+                      current_owner: username,
+                      original_owner: username,
+                      letgo_method: letgo.map((l) =>
+                        l === "give-away" ? "giveaway" : l
+                      ),
+                    })
+                    .select()
+                    .single();
+
+                  if (itemError) {
+                    console.error("Error creating item:", itemError);
+                    throw new Error("Failed to create item: " + itemError.message);
+                  }
+
+                  // Then create the post with the item's id
+                  const { data: postData, error: insertError } = await supabase
+                    .from("posts")
+                    .insert({
+                      title: title.trim(),
+                      story: story.trim(),
+                      brand: brand.trim(),
+                      size: size.trim(),
+                      wear,
+                      giver: username,
+                      picture: imageUrl,
+                      item_id: itemData.id,
+                      letgo_method: letgo.map((l) =>
+                        l === "give-away" ? "giveaway" : l
+                      ),
+                    })
+                    .select()
+                    .single();
+
+                  if (insertError) {
+                    console.error("Error creating post:", insertError);
+                    // If post creation fails, we should delete the item to maintain consistency
+                    await supabase.from("items").delete().eq("id", itemData.id);
+                    throw new Error("Failed to create post: " + insertError.message);
+                  }
+
+                  // Update the item with the latest post id
+                  const { error: updateError } = await supabase
+                    .from("items")
+                    .update({ latest_post_id: postData.id })
+                    .eq("id", itemData.id);
+
+                  if (updateError) {
+                    console.error("Error updating item:", updateError);
+                    // If update fails, we should clean up both the post and item
+                    await supabase.from("posts").delete().eq("id", postData.id);
+                    await supabase.from("items").delete().eq("id", itemData.id);
+                    throw new Error("Failed to update item: " + updateError.message);
+                  }
+
+                  console.log("Successfully created item and post:", itemData);
+                  navigate("/");
+                } catch (err) {
+                  setError(
+                    err.message || "An error occurred while creating your post"
+                  );
+                } finally {
+                  setLoading(false);
+                }
+              }}
             >
-              preview
+              post
             </button>
+            {error && <div className="add-error">{error}</div>}
           </form>
         </div>
       );
@@ -789,11 +920,32 @@ const AddItem = () => {
               setLoading(true);
               setError("");
               try {
-                const [imageUrl, post_id] = await Promise.all([
-                  pictureFile ? uploadImage() : null,
-                  getNextPostId(),
-                ]);
-                const { error: insertError } = await supabase
+                const imageUrl = pictureFile ? await uploadImage() : null;
+
+                // First create the item entry
+                const { data: itemData, error: itemError } = await supabase
+                  .from("items")
+                  .insert({
+                    title: title.trim(),
+                    brand: brand.trim(),
+                    size: size.trim(),
+                    wear,
+                    current_owner: username,
+                    original_owner: username,
+                    letgo_method: letgo.map((l) =>
+                      l === "give-away" ? "giveaway" : l
+                    ),
+                  })
+                  .select()
+                  .single();
+
+                if (itemError) {
+                  console.error("Error creating item:", itemError);
+                  throw new Error("Failed to create item: " + itemError.message);
+                }
+
+                // Then create the post with the item's id
+                const { data: postData, error: insertError } = await supabase
                   .from("posts")
                   .insert({
                     title: title.trim(),
@@ -803,15 +955,36 @@ const AddItem = () => {
                     wear,
                     giver: username,
                     picture: imageUrl,
-                    post_id,
+                    item_id: itemData.id,
                     letgo_method: letgo.map((l) =>
                       l === "give-away" ? "giveaway" : l
                     ),
-                  });
-                if (insertError)
-                  throw new Error(
-                    "Failed to create post: " + insertError.message
-                  );
+                  })
+                  .select()
+                  .single();
+
+                if (insertError) {
+                  console.error("Error creating post:", insertError);
+                  // If post creation fails, we should delete the item to maintain consistency
+                  await supabase.from("items").delete().eq("id", itemData.id);
+                  throw new Error("Failed to create post: " + insertError.message);
+                }
+
+                // Update the item with the latest post id
+                const { error: updateError } = await supabase
+                  .from("items")
+                  .update({ latest_post_id: postData.id })
+                  .eq("id", itemData.id);
+
+                if (updateError) {
+                  console.error("Error updating item:", updateError);
+                  // If update fails, we should clean up both the post and item
+                  await supabase.from("posts").delete().eq("id", postData.id);
+                  await supabase.from("items").delete().eq("id", itemData.id);
+                  throw new Error("Failed to update item: " + updateError.message);
+                }
+
+                console.log("Successfully created item and post:", itemData);
                 navigate("/");
               } catch (err) {
                 setError(

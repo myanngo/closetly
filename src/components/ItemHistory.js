@@ -6,54 +6,63 @@ import "./ItemHistory.css";
 import Postcard from "./Postcard";
 import { supabase } from "../config/supabaseClient";
 
+// Add timestamp utility function
+const getRelativeTime = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+  if (diffInSeconds < 3600)
+    return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400)
+    return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 2592000)
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 31536000)
+    return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+  return `${Math.floor(diffInSeconds / 31536000)} years ago`;
+};
+
 const ItemHistory = () => {
   const { itemId } = useParams();
   const navigate = useNavigate();
-
-  const [itemTitle, setItemTitle] = useState("");
-  const [allItemPosts, setAllItemPosts] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [itemTitle, setItemTitle] = useState("");
 
   useEffect(() => {
-    const fetchItemHistory = async () => {
+    const fetchPosts = async () => {
       try {
-        setLoading(true);
-        setError("");
-
-        // Fetch all posts with the same post_id, ordered by creation date
-        const { data: postsData, error: postsError } = await supabase
+        const { data, error } = await supabase
           .from("posts")
           .select("*")
-          .eq("post_id", Number(itemId))
-          .order("created_at", { ascending: true }); // Oldest first to show chronological history
+          .eq("item_id", Number(itemId))
+          .order("created_at", { ascending: false }); // Changed to descending order
 
-        if (postsError) {
-          console.error("Error fetching posts:", postsError);
-          setError("Failed to load item history");
-          return;
-        }
-
-        if (!postsData || postsData.length === 0) {
-          setError("Item not found");
-          return;
-        }
-
-        setAllItemPosts(postsData);
-
-        // Set the item title from the first post (original post)
-        setItemTitle(postsData[0].title || "Unknown Item");
+        if (error) throw error;
+        setPosts(data || []);
       } catch (err) {
-        console.error("Error in fetchItemHistory:", err);
-        setError("An unexpected error occurred");
+        setError("Failed to load item history");
+        console.error("Error fetching posts:", err);
       } finally {
         setLoading(false);
       }
     };
 
-    if (itemId) {
-      fetchItemHistory();
-    }
+    fetchPosts();
+
+    // Fetch the item title
+    const fetchItemTitle = async () => {
+      const { data, error } = await supabase
+        .from("items")
+        .select("title")
+        .eq("id", Number(itemId))
+        .single();
+      if (!error && data) setItemTitle(data.title);
+    };
+    fetchItemTitle();
   }, [itemId]);
 
   if (loading) {
@@ -88,54 +97,52 @@ const ItemHistory = () => {
     );
   }
 
-  // Filter posts that have stories to display
-  const postsWithStories = allItemPosts.filter(
-    (post) => post.story && post.story.trim() !== ""
-  );
-
   return (
     <div className="item-history-fullscreen">
       <button className="back-btn" onClick={() => navigate(-1)}>
         <FontAwesomeIcon icon={faArrowLeft} size="lg" />
       </button>
-      <div className="item-history-title">
-        Item History
-        <br />
-        <span className="item-history-sub">{itemTitle}</span>
+
+      <div className="item-history-header">
+        <h1>Item History</h1>
+        {itemTitle && (
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: "1.5em",
+              margin: "2px 0",
+              fontFamily: "Instrument Serif",
+              color: "#ff3b3f",
+              marginBottom: "1rem",
+              fontWeight: "500",
+            }}
+          >
+            {itemTitle}
+          </div>
+        )}
       </div>
 
-      {postsWithStories.length > 0 ? (
-        <div className="item-history-list">
-          {postsWithStories.map((post, idx) => {
-            // Determine the user who created this story post
-            const storyUser = post.receiver || post.giver;
-
-            return (
-              <Postcard
-                key={`${post.id}-${idx}`}
-                user={`@${storyUser}`}
-                text={post.story}
-                image={post.picture}
-                initialLikes={0}
-                hideActions={false}
-                post_id={post.post_id}
-                id={post.id}
-              />
-            );
-          })}
-        </div>
-      ) : (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "50px",
-            fontStyle: "italic",
-            color: "#666",
-          }}
-        >
-          No stories have been shared for this item yet.
-        </div>
-      )}
+      <div className="item-history-posts">
+        {posts.map((post, index) => (
+          <div key={post.id} className="history-post">
+            <div className="history-post-header"></div>
+            <Postcard
+              user={
+                post.receiver
+                  ? `@${post.giver} → @${post.receiver}`
+                  : `@${post.giver}`
+              }
+              text={post.story || "No story shared"}
+              image={post.picture}
+              initialLikes={0}
+              hideActions={false}
+              post_id={post.item_id}
+              id={post.id}
+              created_at={post.created_at}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

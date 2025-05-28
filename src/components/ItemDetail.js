@@ -12,6 +12,24 @@ import "./ItemDetail.css";
 import Postcard from "./Postcard";
 import { supabase } from "../config/supabaseClient";
 
+// Add timestamp utility function
+const getRelativeTime = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+  if (diffInSeconds < 3600)
+    return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+  if (diffInSeconds < 86400)
+    return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+  if (diffInSeconds < 2592000)
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 31536000)
+    return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+  return `${Math.floor(diffInSeconds / 31536000)} years ago`;
+};
+
 const ItemDetail = () => {
   const { itemId } = useParams();
   const navigate = useNavigate();
@@ -35,6 +53,10 @@ const ItemDetail = () => {
   const [offerLoading, setOfferLoading] = useState(false);
   const [offerError, setOfferError] = useState("");
   const [offerSuccess, setOfferSuccess] = useState("");
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [authUser, setAuthUser] = useState(null);
+  const [username, setUsername] = useState("");
 
   useEffect(() => {
     const fetchItemData = async () => {
@@ -46,7 +68,7 @@ const ItemDetail = () => {
         const { data: postsData, error: postsError } = await supabase
           .from("posts")
           .select("*")
-          .eq("post_id", Number(itemId))
+          .eq("item_id", Number(itemId))
           .order("created_at", { ascending: true }); // Oldest first to find starter
 
         if (postsError) {
@@ -80,10 +102,13 @@ const ItemDetail = () => {
         if (postsWithStories.length > 0) {
           const latestStoryPost = postsWithStories[0];
           setLatestStory({
+            id: latestStoryPost.id,
             user: latestStoryPost.receiver || latestStoryPost.giver,
             text: latestStoryPost.story,
             photo: latestStoryPost.picture,
             created_at: latestStoryPost.created_at,
+            giver: latestStoryPost.giver,
+            receiver: latestStoryPost.receiver,
           });
         }
 
@@ -114,6 +139,7 @@ const ItemDetail = () => {
           .eq("id", user.id)
           .single();
         if (userData) setCurrentUsername(userData.username);
+        setAuthUser(user);
       }
     };
     fetchCurrentUser();
@@ -132,6 +158,40 @@ const ItemDetail = () => {
     };
     fetchUserItems();
   }, [showOfferModal, selectedOption, currentUsername]);
+
+  // Fetch comments for the latest story
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!latestStory) return;
+      const { data: commentsData } = await supabase
+        .from("comments")
+        .select("id, user_id, username, text, created_at")
+        .eq("post_id", latestStory.id)
+        .order("created_at", { ascending: true });
+      setComments(commentsData || []);
+    };
+    fetchComments();
+  }, [latestStory]);
+
+  // Add comment logic
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || !authUser || !latestStory) return;
+    await supabase.from("comments").insert({
+      post_id: latestStory.id,
+      user_id: authUser.id,
+      username: username || "",
+      text: newComment.trim(),
+    });
+    setNewComment("");
+    // Refetch comments
+    const { data: commentsData } = await supabase
+      .from("comments")
+      .select("id, user_id, username, text, created_at")
+      .eq("post_id", latestStory.id)
+      .order("created_at", { ascending: true });
+    setComments(commentsData || []);
+  };
 
   const handleStyleInput = () => {
     //TODO
@@ -276,22 +336,30 @@ const ItemDetail = () => {
 
       {latestStory ? (
         <div className="item-detail-section">
-          <div className="item-detail-label">Latest Story</div>
+          <div className="item-detail-label">
+            Latest Story
+            <span
+              style={{
+                fontSize: "0.9rem",
+                color: "#666",
+                marginLeft: "10px",
+                fontWeight: "normal",
+              }}
+            ></span>
+          </div>
           <Postcard
             user={
-              allItemPosts.length === 1 ||
-              !allItemPosts[allItemPosts.length - 1].receiver
-                ? `@${originalStarter}`
-                : `@${allItemPosts[allItemPosts.length - 1].giver} → @${
-                    allItemPosts[allItemPosts.length - 1].receiver
-                  }`
+              latestStory.receiver
+                ? `@${latestStory.giver} → @${latestStory.receiver}`
+                : `@${latestStory.giver}`
             }
             text={latestStory.text}
             image={latestStory.photo}
             initialLikes={0}
             hideActions={false}
-            post_id={item.post_id}
-            id={item.id}
+            post_id={item.item_id}
+            id={latestStory.id}
+            created_at={latestStory.created_at}
           />
         </div>
       ) : (

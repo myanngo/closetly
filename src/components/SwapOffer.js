@@ -13,7 +13,7 @@ const SwapOffer = () => {
   const [userItems, setUserItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [message, setMessage] = useState("");
-  const [offerType, setOfferType] = useState("swap");
+  const [offerType, setOfferType] = useState("");
   const [lendDuration, setLendDuration] = useState("");
   const [contactMethod, setContactMethod] = useState("email");
   const [contactInfo, setContactInfo] = useState("");
@@ -21,6 +21,7 @@ const SwapOffer = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [availableOfferTypes, setAvailableOfferTypes] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,18 +56,29 @@ const SwapOffer = () => {
 
         // Get target item details
         const { data: itemData, error: itemError } = await supabase
-          .from("posts")
+          .from("items")
           .select("*")
-          .eq("post_id", itemId)
-          .order("created_at", { ascending: false })
-          .limit(1);
+          .eq("latest_post_id", itemId)
+          .single();
 
-        if (itemError || !itemData || itemData.length === 0) {
+        if (itemError || !itemData) {
           setError("Item not found");
           return;
         }
 
-        setTargetItem(itemData[0]);
+        setTargetItem(itemData);
+        
+        // Set available offer types based on letgo_method
+        if (itemData.letgo_method) {
+          const methods = Array.isArray(itemData.letgo_method) 
+            ? itemData.letgo_method 
+            : [itemData.letgo_method];
+          setAvailableOfferTypes(methods);
+          // Set initial offer type to first available method
+          if (methods.length > 0) {
+            setOfferType(methods[0]);
+          }
+        }
 
         // Get user's available items for swapping
         const { data: userItemsData, error: userItemsError } = await supabase
@@ -206,33 +218,39 @@ const SwapOffer = () => {
           <div className="offer-type-section">
             <h3>What type of offer?</h3>
             <div className="offer-type-buttons">
-              <button
-                type="button"
-                className={`offer-type-btn ${
-                  offerType === "swap" ? "selected" : ""
-                }`}
-                onClick={() => setOfferType("swap")}
-              >
-                Swap
-              </button>
-              <button
-                type="button"
-                className={`offer-type-btn ${
-                  offerType === "lend" ? "selected" : ""
-                }`}
-                onClick={() => setOfferType("lend")}
-              >
-                Borrow
-              </button>
-              <button
-                type="button"
-                className={`offer-type-btn ${
-                  offerType === "giveaway" ? "selected" : ""
-                }`}
-                onClick={() => setOfferType("giveaway")}
-              >
-                Request
-              </button>
+              {availableOfferTypes.includes("swap") && (
+                <button
+                  type="button"
+                  className={`offer-type-btn ${
+                    offerType === "swap" ? "selected" : ""
+                  }`}
+                  onClick={() => setOfferType("swap")}
+                >
+                  Swap
+                </button>
+              )}
+              {availableOfferTypes.includes("lend") && (
+                <button
+                  type="button"
+                  className={`offer-type-btn ${
+                    offerType === "lend" ? "selected" : ""
+                  }`}
+                  onClick={() => setOfferType("lend")}
+                >
+                  Borrow
+                </button>
+              )}
+              {availableOfferTypes.includes("giveaway") && (
+                <button
+                  type="button"
+                  className={`offer-type-btn ${
+                    offerType === "giveaway" ? "selected" : ""
+                  }`}
+                  onClick={() => setOfferType("giveaway")}
+                >
+                  Request
+                </button>
+              )}
             </div>
           </div>
 

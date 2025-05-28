@@ -9,7 +9,7 @@ import { faEllipsisH } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
-const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, post_id, id }) => {
+const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, post_id, id, created_at }) => {
   const { user: authUser, username = "" } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
@@ -21,14 +21,28 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
   // Split text into lines for postcard effect
   const lines = text.split(/(?<=\.|!|\?)\s|\n/).filter(Boolean);
 
+  // Utility for relative time
+  const getRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+    return `${Math.floor(diffInSeconds / 31536000)} years ago`;
+  };
+
   useEffect(() => {
-    if (!post_id) return;
+    if (!id) return;
     // Likes
     const fetchLikesAndComments = async () => {
       const { data: likesData } = await supabase
         .from("likes")
         .select("user_id")
-        .eq("post_id", post_id);
+        .eq("post_id", id);
       setLikes(likesData ? likesData.length : 0);
       setLiked(
         !!(
@@ -41,14 +55,14 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
       const { data: commentsData } = await supabase
         .from("comments")
         .select("id, user_id, username, text, created_at")
-        .eq("post_id", post_id)
+        .eq("post_id", id)
         .order("created_at", { ascending: true });
       setComments(commentsData || []);
     };
     fetchLikesAndComments();
-  }, [post_id, authUser]);
+  }, [id, authUser]);
 
-  if (typeof post_id !== 'number' || !post_id) return null;
+  if (!id) return null;
 
   // Like/unlike logic
   const handleLike = async () => {
@@ -58,14 +72,14 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
       await supabase
         .from("likes")
         .delete()
-        .eq("post_id", post_id)
+        .eq("post_id", id)
         .eq("user_id", authUser.id);
       setLiked(false);
       setLikes((l) => l - 1);
     } else {
       // Like
       await supabase.from("likes").insert({
-        post_id,
+        post_id: id,
         user_id: authUser.id,
         username: username || "",
       });
@@ -79,7 +93,7 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
     e.preventDefault();
     if (!newComment.trim() || !authUser) return;
     await supabase.from("comments").insert({
-      post_id,
+      post_id: id,
       user_id: authUser.id,
       username: username || "",
       text: newComment.trim(),
@@ -89,7 +103,7 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
     const { data: commentsData } = await supabase
       .from("comments")
       .select("id, user_id, username, text, created_at")
-      .eq("post_id", post_id)
+      .eq("post_id", id)
       .order("created_at", { ascending: true });
     setComments(commentsData || []);
   };
@@ -103,11 +117,11 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
     const { data: postsInThread } = await supabase
       .from("posts")
       .select("id, created_at")
-      .eq("post_id", post_id)
+      .eq("post_id", id)
       .order("created_at", { ascending: true });
     if (postsInThread && postsInThread.length > 0 && Number(postsInThread[0].id) === Number(id)) {
       // This is the first post in the thread, delete all posts with this post_id
-      await supabase.from("posts").delete().eq("post_id", post_id);
+      await supabase.from("posts").delete().eq("post_id", id);
     } else {
       // Just delete this post (no giver condition for debugging)
       await supabase.from("posts").delete().eq("id", Number(id));
@@ -119,7 +133,14 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
     <>
       <div className="postcard-v2">
         <div className="postcard-v2-left">
-          <span className="postcard-v2-user">{user}</span>
+          <span className="postcard-v2-user">
+            {user}
+            {created_at && (
+              <span style={{ color: '#888', fontSize: '0.95em', marginLeft: 8 }}>
+                • {getRelativeTime(created_at)}
+              </span>
+            )}
+          </span>
           <div className="postcard-v2-lines">
             {lines.map((line, idx) => (
               <div className="postcard-v2-line" key={idx}>

@@ -184,13 +184,14 @@
 .offers-badge {
   position: absolute;
   top: -8px;
-  right: -10px;
-  background: #ff3b3f;
+  right: -9px;
+  background: #000;
   color: #fff;
-  font-size: 0.95rem;
+  font-size: 0.7rem;
   font-weight: 700;
+  font-family: "Manrope";
   border-radius: 50%;
-  padding: 2px 8px;
+  padding: 3px 0px;
   min-width: 24px;
   text-align: center;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
