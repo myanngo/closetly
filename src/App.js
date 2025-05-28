@@ -20,6 +20,7 @@ import SignUp from "./components/SignUp";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Verify from "./components/Verify";
 import CompleteProfile from "./components/CompleteProfile";
+import SwapOffer from "./components/SwapOffer";
 import { AuthProvider } from "./context/AuthContext";
 
 function AppRoutes() {
@@ -75,6 +76,14 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <ItemHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/item/:itemId/offer-swap"
+          element={
+            <ProtectedRoute>
+              <SwapOffer />
             </ProtectedRoute>
           }
         />

@@ -35,7 +35,7 @@
 }
 
 .swap-offer-title {
-  font-family: 'Instrument Serif', serif;
+  font-family: "Instrument Serif", serif;
   font-size: 1.8rem;
   color: #b85c5c;
   text-align: center;
@@ -63,7 +63,7 @@
 }
 
 .swap-item h3 {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-size: 1.1rem;
   color: #222;
   text-align: center;
@@ -110,7 +110,7 @@
 }
 
 .item-name {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-size: 0.9rem;
   color: #222;
   text-align: center;
@@ -129,7 +129,7 @@
 }
 
 .message-section label {
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-size: 1rem;
   color: #222;
 }
@@ -139,7 +139,7 @@
   padding: 0.8rem;
   border: 1px solid #e5e2de;
   border-radius: 12px;
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-size: 0.95rem;
   resize: vertical;
   min-height: 100px;
@@ -157,7 +157,7 @@
   border: none;
   border-radius: 25px;
   padding: 0.8rem;
-  font-family: 'Manrope', Arial, sans-serif;
+  font-family: "Manrope", Arial, sans-serif;
   font-size: 1.1rem;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -176,16 +176,16 @@
   .swap-offer-content {
     padding: 1.5rem;
   }
-  
+
   .swap-items {
     flex-direction: column;
   }
-  
+
   .swap-arrow {
     transform: rotate(90deg);
   }
-  
+
   .items-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
-} 
+}

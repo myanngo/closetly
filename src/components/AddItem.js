@@ -3,7 +3,12 @@ import "./AddItem.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../config/supabaseClient";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
+import {
+  faPlus,
+  faPen,
+  faArrowLeft,
+  faLock,
+} from "@fortawesome/free-solid-svg-icons";
 import clothesHanger from "../assets/clothesonhanger.png";
 import Postcard from "./Postcard";
 
@@ -23,6 +28,11 @@ const AddItem = () => {
   const [userItems, setUserItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [step, setStep] = useState(0);
+
+  // New state for received mode
+  const [isReceivedMode, setIsReceivedMode] = useState(false);
+  const [receivedItemId, setReceivedItemId] = useState("");
+  const [receivedGiver, setReceivedGiver] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -72,11 +82,24 @@ const AddItem = () => {
     if (mode === "story" && username) fetchUserItems();
   }, [username, mode]);
 
-  // Pre-select story mode and item if itemId is in query string
+  // Handle URL parameters for different modes
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const itemId = params.get("itemId");
-    if (itemId) {
+    const modeParam = params.get("mode");
+    const titleParam = params.get("title");
+    const giverParam = params.get("giver");
+
+    if (modeParam === "received" && itemId && titleParam && giverParam) {
+      // Received mode - creating post for accepted swap offer
+      setIsReceivedMode(true);
+      setMode("received");
+      setReceivedItemId(itemId);
+      setReceivedGiver(decodeURIComponent(giverParam));
+      setTitle(decodeURIComponent(titleParam));
+      setStep(1); // Skip selection step
+    } else if (itemId && !modeParam) {
+      // Existing story mode logic
       setMode("story");
       setStep(1);
       setSelectedItemId(itemId);
@@ -133,7 +156,34 @@ const AddItem = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
+      if (mode === "received") {
+        // Handle received mode - create post with specific post_id and receiver
+        if (!story.trim()) throw new Error("Story is required");
+
+        const imageUrl = await uploadImage();
+
+        const { error: insertError } = await supabase.from("posts").insert({
+          post_id: parseInt(receivedItemId),
+          title: title.trim(),
+          story: story.trim(),
+          picture: imageUrl,
+          giver: receivedGiver,
+          receiver: username,
+        });
+
+        if (insertError)
+          throw new Error("Failed to create post: " + insertError.message);
+
+        navigate("/", {
+          state: {
+            message: "Post created successfully! The swap is now complete.",
+          },
+        });
+        return;
+      }
+
       if (mode === "story") {
         if (!selectedItemId) throw new Error("Please select an item");
         if (!story.trim()) throw new Error("Story is required");
@@ -151,7 +201,8 @@ const AddItem = () => {
         navigate("/");
         return;
       }
-      // ... existing add new item logic ...
+
+      // Existing add new item logic
       if (!title.trim()) throw new Error("Title is required");
       if (!username)
         throw new Error(
@@ -170,7 +221,7 @@ const AddItem = () => {
         giver: username,
         picture: imageUrl,
         post_id,
-        available_for: letgo.map((l) => l === "give-away" ? "giveaway" : l),
+        available_for: letgo.map((l) => (l === "give-away" ? "giveaway" : l)),
       });
       if (insertError)
         throw new Error("Failed to create post: " + insertError.message);
@@ -182,7 +233,36 @@ const AddItem = () => {
     }
   };
 
-  const renderPreview = (isStory) => {
+  const renderPreview = (isStory, isReceived = false) => {
+    if (isReceived) {
+      return (
+        <div className="add-preview">
+          <div className="add-title">Preview your received item post</div>
+          <div
+            style={{
+              background: "#e8f5e8",
+              padding: "12px",
+              borderRadius: "8px",
+              marginBottom: "16px",
+              textAlign: "center",
+              color: "#2e8b57",
+              fontWeight: "500",
+            }}
+          >
+            🎉 You received this item from @{receivedGiver}!
+          </div>
+          <Postcard
+            user={`@${receivedGiver} → @${username}`}
+            text={story}
+            image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
+            initialLikes={0}
+            hideActions={true}
+            post_id={parseInt(receivedItemId) || 0}
+          />
+        </div>
+      );
+    }
+
     if (isStory) {
       const item = userItems.find((i) => i.post_id === selectedItemId);
       return (
@@ -227,6 +307,152 @@ const AddItem = () => {
     }
   };
 
+  // Handle received mode flow
+  if (mode === "received") {
+    if (step === 1) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => navigate("/")}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          <div className="add-title">Create Post for Received Item</div>
+          <div
+            style={{
+              background: "#e8f5e8",
+              padding: "16px",
+              borderRadius: "8px",
+              marginBottom: "20px",
+              textAlign: "center",
+              color: "#2e8b57",
+            }}
+          >
+            🎉 Congratulations! You received "{title}" from @{receivedGiver}
+          </div>
+          {error && <div className="add-error">{error}</div>}
+          <form
+            className="add-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setStep(2);
+            }}
+          >
+            <label className="subheader">
+              Item Title{" "}
+              <FontAwesomeIcon
+                icon={faLock}
+                style={{ marginLeft: 8, color: "#999" }}
+              />
+            </label>
+            <input
+              className="add-input"
+              value={title}
+              disabled
+              style={{
+                backgroundColor: "#f5f5f5",
+                color: "#666",
+                cursor: "not-allowed",
+              }}
+            />
+            <label className="subheader">Your Story</label>
+            <textarea
+              className="add-textarea"
+              placeholder="Tell us about receiving this item! How do you feel about it? What are your plans for it?"
+              value={story}
+              onChange={(e) => setStory(e.target.value)}
+              required
+            />
+            <div className="picture-upload">
+              <p>Upload a picture of you with the item (optional)</p>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPictureFile(e.target.files[0])}
+              />
+              {pictureFile && (
+                <img
+                  src={URL.createObjectURL(pictureFile)}
+                  alt="preview"
+                  className="big-image-preview"
+                />
+              )}
+            </div>
+            <button
+              type="submit"
+              className="add-btn"
+              style={{ background: "#2e8b57", color: "#fff" }}
+            >
+              preview
+            </button>
+          </form>
+        </div>
+      );
+    }
+
+    if (step === 2) {
+      return (
+        <div className="add-bg">
+          <button
+            className="add-back-btn"
+            type="button"
+            onClick={() => setStep(1)}
+          >
+            <FontAwesomeIcon icon={faArrowLeft} />
+          </button>
+          {renderPreview(false, true)}
+          <button
+            className="add-btn"
+            style={{ background: "#2e8b57", color: "#fff", marginTop: 24 }}
+            onClick={async () => {
+              setLoading(true);
+              setError("");
+              try {
+                const imageUrl = pictureFile ? await uploadImage() : null;
+
+                const { error: insertError } = await supabase
+                  .from("posts")
+                  .insert({
+                    post_id: parseInt(receivedItemId),
+                    title: title.trim(),
+                    story: story.trim(),
+                    picture: imageUrl,
+                    giver: receivedGiver,
+                    receiver: username,
+                  });
+
+                if (insertError)
+                  throw new Error(
+                    "Failed to create post: " + insertError.message
+                  );
+
+                navigate("/", {
+                  state: {
+                    message:
+                      "Post created successfully! The swap is now complete.",
+                  },
+                });
+              } catch (err) {
+                setError(
+                  err.message || "An error occurred while creating your post"
+                );
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
+          >
+            {loading ? "posting..." : "complete swap"}
+          </button>
+          {error && <div className="add-error">{error}</div>}
+        </div>
+      );
+    }
+  }
+
+  // Rest of the existing component logic remains the same
   if (step === 0) {
     return (
       <div className="add-bg">
@@ -578,7 +804,9 @@ const AddItem = () => {
                     giver: username,
                     picture: imageUrl,
                     post_id,
-                    available_for: letgo.map((l) => l === "give-away" ? "giveaway" : l),
+                    letgo_method: letgo.map((l) =>
+                      l === "give-away" ? "giveaway" : l
+                    ),
                   });
                 if (insertError)
                   throw new Error(

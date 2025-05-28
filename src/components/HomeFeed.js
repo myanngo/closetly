@@ -9,6 +9,7 @@ import {
   faBell,
   faCheck,
   faTimes,
+  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "../config/supabaseClient";
 import logo from "../assets/logo.png";
@@ -23,8 +24,11 @@ const HomeFeed = () => {
   const [error, setError] = useState("");
   const [showOffersModal, setShowOffersModal] = useState(false);
   const [pendingOffers, setPendingOffers] = useState([]);
+  const [acceptedOffers, setAcceptedOffers] = useState([]);
   const [offerActionLoading, setOfferActionLoading] = useState(null);
   const [offerActionError, setOfferActionError] = useState("");
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [selectedContact, setSelectedContact] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -95,49 +99,91 @@ const HomeFeed = () => {
     fetchData();
   }, []);
 
-  // Fetch pending offers for items the user owns
+  // Fetch pending offers and accepted offers
   useEffect(() => {
     const fetchOffers = async () => {
       if (!currentUser) return;
-      // 1. Get all latest posts for each item_id (thread)
-      const { data: latestPosts, error: latestPostsError } = await supabase
-        .from("posts")
-        .select("item_id, post_id, giver, receiver, created_at")
-        .order("item_id", { ascending: true })
-        .order("created_at", { ascending: false });
-      if (latestPostsError) {
-        setPendingOffers([]);
-        return;
-      }
-      // 2. For each item_id, keep only the latest post (by created_at)
-      const latestByItem = {};
-      for (const post of latestPosts) {
-        if (!latestByItem[post.item_id]) {
-          latestByItem[post.item_id] = post;
+
+      try {
+        // Get all latest posts for each item_id (thread)
+        const { data: latestPosts, error: latestPostsError } = await supabase
+          .from("posts")
+          .select("item_id, post_id, giver, receiver, created_at, title")
+          .order("item_id", { ascending: true })
+          .order("created_at", { ascending: false });
+
+        if (latestPostsError) {
+          console.error("Error fetching latest posts:", latestPostsError);
+          setPendingOffers([]);
+          setAcceptedOffers([]);
+          return;
         }
+
+        // For each item_id, keep only the latest post (by created_at)
+        const latestByItem = {};
+        for (const post of latestPosts) {
+          if (!latestByItem[post.item_id || post.post_id]) {
+            latestByItem[post.item_id || post.post_id] = post;
+          }
+        }
+
+        // Find item_ids where current user is the current owner
+        const myItemIds = Object.values(latestByItem)
+          .filter(
+            (post) =>
+              (post.receiver && post.receiver === currentUser.username) ||
+              (!post.receiver && post.giver === currentUser.username)
+          )
+          .map((post) => post.item_id || post.post_id);
+
+        if (myItemIds.length === 0) {
+          setPendingOffers([]);
+          setAcceptedOffers([]);
+          return;
+        }
+
+        // Get pending offers for items I own
+        const { data: pendingOffersData, error: pendingError } = await supabase
+          .from("offers")
+          .select(
+            `
+            *,
+            swap_item:swap_item_id(title, brand, size, picture)
+          `
+          )
+          .in("item_id", myItemIds)
+          .eq("status", "pending");
+
+        if (pendingError) {
+          console.error("Error fetching pending offers:", pendingError);
+        } else {
+          setPendingOffers(pendingOffersData || []);
+        }
+
+        // Get accepted offers where I need to create a post (I'm the offer-er)
+        const { data: acceptedOffersData, error: acceptedError } =
+          await supabase
+            .from("offers")
+            .select(
+              `
+            *,
+            original_item:item_id(title, post_id)
+          `
+            )
+            .eq("from_user", currentUser.username)
+            .eq("status", "accepted")
+            .eq("post_created", false);
+
+        if (acceptedError) {
+          console.error("Error fetching accepted offers:", acceptedError);
+        } else {
+          setAcceptedOffers(acceptedOffersData || []);
+        }
+      } catch (err) {
+        console.error("Error in fetchOffers:", err);
       }
-      // 3. Find item_ids where current user is the current owner
-      const myItemIds = Object.values(latestByItem)
-        .filter(
-          (post) =>
-            (post.receiver && post.receiver === currentUser.username) ||
-            (!post.receiver && post.giver === currentUser.username)
-        )
-        .map((post) => post.item_id);
-      if (myItemIds.length === 0) {
-        setPendingOffers([]);
-        return;
-      }
-      // 4. Get all pending offers for these item_ids (threads)
-      const { data: offers } = await supabase
-        .from("swap_offers")
-        .select(
-          "*, from_user, offer_type, message, lend_duration, swap_item_id"
-        )
-        .in("item_id", myItemIds)
-        .eq("status", "pending");
-      setPendingOffers(offers || []);
     };
+
     fetchOffers();
   }, [currentUser]);
 
@@ -159,18 +205,30 @@ const HomeFeed = () => {
     try {
       // Accept this offer
       const { error: acceptError } = await supabase
-        .from("swap_offers")
+        .from("offers")
         .update({ status: "accepted" })
         .eq("id", offer.id);
+
+      if (acceptError) throw acceptError;
+
       // Reject all other pending offers for this item
       await supabase
-        .from("swap_offers")
+        .from("offers")
         .update({ status: "rejected" })
         .eq("item_id", offer.item_id)
         .neq("id", offer.id)
         .eq("status", "pending");
-      if (acceptError) throw acceptError;
-      // Refresh offers
+
+      // Show contact information
+      setSelectedContact({
+        method: offer.contact_method,
+        info: offer.contact_info,
+        userName: offer.from_user,
+        offerType: offer.offer_type,
+      });
+      setShowContactModal(true);
+
+      // Remove from pending offers
       setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
     } catch (err) {
       setOfferActionError("Failed to accept offer. Please try again.");
@@ -185,10 +243,12 @@ const HomeFeed = () => {
     setOfferActionError("");
     try {
       const { error } = await supabase
-        .from("swap_offers")
+        .from("offers")
         .update({ status: "rejected" })
         .eq("id", offer.id);
+
       if (error) throw error;
+
       setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
     } catch (err) {
       setOfferActionError("Failed to reject offer. Please try again.");
@@ -196,6 +256,43 @@ const HomeFeed = () => {
       setOfferActionLoading(null);
     }
   };
+
+  // Handle creating post for accepted offer
+  const handleCreatePost = async (offer) => {
+    try {
+      // Mark offer as post_created to remove from list
+      await supabase
+        .from("offers")
+        .update({ post_created: true })
+        .eq("id", offer.id);
+
+      // Get original item details
+      const { data: originalItem } = await supabase
+        .from("posts")
+        .select("title, post_id")
+        .eq("post_id", offer.item_id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (originalItem && originalItem.length > 0) {
+        // Navigate to add item page with pre-filled data
+        navigate(
+          `/add?mode=received&itemId=${
+            originalItem[0].post_id
+          }&title=${encodeURIComponent(
+            originalItem[0].title
+          )}&giver=${encodeURIComponent(offer.to_user)}`
+        );
+      }
+
+      // Remove from accepted offers list
+      setAcceptedOffers((prev) => prev.filter((o) => o.id !== offer.id));
+    } catch (err) {
+      setOfferActionError("Failed to create post. Please try again.");
+    }
+  };
+
+  const totalOffers = pendingOffers.length + acceptedOffers.length;
 
   if (loading) {
     return (
@@ -267,12 +364,13 @@ const HomeFeed = () => {
             >
               Offers
             </span>
-            {pendingOffers.length > 0 && (
-              <span className="offers-badge">{pendingOffers.length}</span>
+            {totalOffers > 0 && (
+              <span className="offers-badge">{totalOffers}</span>
             )}
           </button>
         </div>
       </div>
+
       {/* Feed toggle below header */}
       <div className="feed-toggle">
         <button
@@ -327,7 +425,9 @@ const HomeFeed = () => {
                   <span style={{ color: "#222" }}>@{post.receiver}</span>{" "}
                 </>
               )}
-              <span style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}>
+              <span
+                style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}
+              >
                 {post.title}
               </span>
             </div>
@@ -359,6 +459,8 @@ const HomeFeed = () => {
           </div>
         ))
       )}
+
+      {/* Offers Modal */}
       {showOffersModal && (
         <div
           className="offers-modal-backdrop"
@@ -385,18 +487,13 @@ const HomeFeed = () => {
                 {offerActionError}
               </div>
             )}
-            {pendingOffers.length === 0 ? (
-              <div
-                style={{
-                  color: "#888",
-                  fontStyle: "italic",
-                  fontFamily: "Manrope",
-                }}
-              >
-                No pending offers for your items.
-              </div>
-            ) : (
-              <div>
+
+            {/* Pending Offers Section */}
+            {pendingOffers.length > 0 && (
+              <div style={{ marginBottom: 30 }}>
+                <h3 style={{ color: "#333", marginBottom: 15 }}>
+                  Pending Offers for Your Items
+                </h3>
                 {pendingOffers.map((offer, idx) => (
                   <div
                     key={offer.id || idx}
@@ -407,18 +504,36 @@ const HomeFeed = () => {
                       marginBottom: 8,
                     }}
                   >
-                    <div style={{ fontSize: "1.1rem" }}>
+                    <div style={{ fontSize: "1.1rem", marginBottom: 8 }}>
                       <b>@{offer.from_user}</b> wants to{" "}
-                      <b>{offer.offer_type}</b>
+                      <b>{offer.offer_type}</b> your item
                     </div>
-                    {offer.lend_duration && (
-                      <div>Lend duration: {offer.lend_duration}</div>
-                    )}
-                    {offer.message && (
-                      <div style={{ fontStyle: "italic", color: "#555" }}>
-                        {offer.message}
+
+                    {offer.offer_type === "swap" && offer.swap_item && (
+                      <div style={{ marginBottom: 8, fontStyle: "italic" }}>
+                        Offering: {offer.swap_item.title}{" "}
+                        {offer.swap_item.brand && `(${offer.swap_item.brand})`}
                       </div>
                     )}
+
+                    {offer.lend_duration && (
+                      <div style={{ marginBottom: 8 }}>
+                        Duration: {offer.lend_duration}
+                      </div>
+                    )}
+
+                    {offer.message && (
+                      <div
+                        style={{
+                          fontStyle: "italic",
+                          color: "#555",
+                          marginBottom: 8,
+                        }}
+                      >
+                        "{offer.message}"
+                      </div>
+                    )}
+
                     <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
                       <button
                         onClick={() => handleAcceptOffer(offer)}
@@ -471,6 +586,75 @@ const HomeFeed = () => {
                 ))}
               </div>
             )}
+
+            {/* Accepted Offers Section */}
+            {acceptedOffers.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <h3 style={{ color: "#333", marginBottom: 15 }}>
+                  Create Posts for Accepted Offers
+                </h3>
+                {acceptedOffers.map((offer, idx) => (
+                  <div
+                    key={offer.id || idx}
+                    className="offer-row"
+                    style={{
+                      borderBottom: "1px solid #eee",
+                      padding: "12px 0",
+                      marginBottom: 8,
+                      backgroundColor: "#f0f8f0",
+                      borderRadius: 8,
+                      paddingLeft: 12,
+                      paddingRight: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: "1.1rem", marginBottom: 8 }}>
+                      Your {offer.offer_type} offer was accepted by{" "}
+                      <b>@{offer.to_user}</b>!
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "0.9rem",
+                        color: "#666",
+                        marginBottom: 12,
+                      }}
+                    >
+                      Create a post to complete the transaction.
+                    </div>
+                    <button
+                      onClick={() => handleCreatePost(offer)}
+                      style={{
+                        background: "#ff3b3f",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 6,
+                        padding: "10px 20px",
+                        fontWeight: 500,
+                        fontSize: "1rem",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> Create Post
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {totalOffers === 0 && (
+              <div
+                style={{
+                  color: "#888",
+                  fontStyle: "italic",
+                  fontFamily: "Manrope",
+                }}
+              >
+                No pending offers for your items.
+              </div>
+            )}
+
             <button
               onClick={() => setShowOffersModal(false)}
               style={{
@@ -487,6 +671,66 @@ const HomeFeed = () => {
               }}
             >
               Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Contact Modal */}
+      {showContactModal && selectedContact && (
+        <div
+          className="offers-modal-backdrop"
+          style={{ zIndex: 1001 }}
+          onClick={() => setShowContactModal(false)}
+        >
+          <div
+            className="offers-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "400px" }}
+          >
+            <h2 style={{ color: "#2e8b57", marginBottom: 20 }}>
+              Offer Accepted!
+            </h2>
+            <p style={{ marginBottom: 20 }}>
+              Contact <b>@{selectedContact.userName}</b> to arrange the{" "}
+              {selectedContact.offerType}:
+            </p>
+            <div
+              style={{
+                background: "#f8f9fa",
+                padding: 20,
+                borderRadius: 8,
+                marginBottom: 20,
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                {selectedContact.method === "email" ? "Email:" : "Phone:"}
+              </div>
+              <div
+                style={{
+                  fontSize: "1.2rem",
+                  color: "#ff3b3f",
+                  fontWeight: 500,
+                }}
+              >
+                {selectedContact.info}
+              </div>
+            </div>
+            <button
+              onClick={() => setShowContactModal(false)}
+              style={{
+                background: "#2e8b57",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                padding: "10px 20px",
+                fontWeight: 500,
+                fontSize: "1rem",
+                width: "100%",
+              }}
+            >
+              Got it!
             </button>
           </div>
         </div>
