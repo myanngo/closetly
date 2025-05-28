@@ -99,18 +99,36 @@ const HomeFeed = () => {
   useEffect(() => {
     const fetchOffers = async () => {
       if (!currentUser) return;
-      // Get all posts where current user is the owner (giver, receiver null)
-      const { data: myItems } = await supabase
+      // 1. Get all latest posts for each item_id (thread)
+      const { data: latestPosts, error: latestPostsError } = await supabase
         .from("posts")
-        .select("post_id")
-        .eq("giver", currentUser.username)
-        .is("receiver", null);
-      const myItemIds = (myItems || []).map((item) => item.post_id);
+        .select("item_id, post_id, giver, receiver, created_at")
+        .order("item_id", { ascending: true })
+        .order("created_at", { ascending: false });
+      if (latestPostsError) {
+        setPendingOffers([]);
+        return;
+      }
+      // 2. For each item_id, keep only the latest post (by created_at)
+      const latestByItem = {};
+      for (const post of latestPosts) {
+        if (!latestByItem[post.item_id]) {
+          latestByItem[post.item_id] = post;
+        }
+      }
+      // 3. Find item_ids where current user is the current owner
+      const myItemIds = Object.values(latestByItem)
+        .filter(
+          (post) =>
+            (post.receiver && post.receiver === currentUser.username) ||
+            (!post.receiver && post.giver === currentUser.username)
+        )
+        .map((post) => post.item_id);
       if (myItemIds.length === 0) {
         setPendingOffers([]);
         return;
       }
-      // Get all pending offers for these items
+      // 4. Get all pending offers for these item_ids (threads)
       const { data: offers } = await supabase
         .from("swap_offers")
         .select(
@@ -297,28 +315,40 @@ const HomeFeed = () => {
                 fontSize: "1rem",
                 fontWeight: 500,
                 marginBottom: "0.5rem",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
               }}
             >
               <span style={{ color: "#222" }}>@{post.giver}</span>{" "}
-              <span style={{ fontSize: "1.1em" }}>→</span>{" "}
-              <span style={{ color: "#222" }}>
-                @{post.receiver || "someone"}
-              </span>{" "}
-              <span style={{ color: "#d36c6c", fontWeight: 600 }}>
+              {post.receiver && (
+                <>
+                  <span style={{ fontSize: "1.1em" }}>→</span>{" "}
+                  <span style={{ color: "#222" }}>@{post.receiver}</span>{" "}
+                </>
+              )}
+              <span style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}>
                 {post.title}
               </span>
             </div>
 
-            <Postcard
-              user={`@${post.receiver || "someone"}`}
-              text={post.story || "Received this amazing item!"}
-              image={post.picture}
-              initialLikes={0}
-              hideActions={false}
-              post_id={post.post_id}
-            />
+            <div style={{ marginBottom: 10 }}>
+              <Postcard
+                user={
+                  post.receiver
+                    ? `@${post.giver} → @${post.receiver}`
+                    : `@${post.giver}`
+                }
+                text={post.story || "Received this amazing item!"}
+                image={post.picture}
+                initialLikes={0}
+                hideActions={false}
+                post_id={post.post_id}
+                id={post.id}
+              />
+            </div>
 
-            <div className="swap-actions">
+            <div className="swap-actions" style={{ marginTop: 8 }}>
               <button onClick={() => handleViewItem(post)}>
                 <FontAwesomeIcon icon={faEye} /> view item
               </button>

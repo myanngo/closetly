@@ -268,12 +268,17 @@ const ItemDetail = () => {
         <div className="item-detail-section">
           <div className="item-detail-label">Latest Story</div>
           <Postcard
-            user={`@${latestStory.user}`}
+            user={
+              allItemPosts.length === 1 || !allItemPosts[allItemPosts.length-1].receiver
+                ? `@${originalStarter}`
+                : `@${allItemPosts[allItemPosts.length-1].giver} → @${allItemPosts[allItemPosts.length-1].receiver}`
+            }
             text={latestStory.text}
             image={latestStory.photo}
             initialLikes={0}
             hideActions={false}
             post_id={item.post_id}
+            id={item.id}
           />
         </div>
       ) : (
@@ -360,8 +365,9 @@ const ItemDetail = () => {
             <div style={{ marginBottom: 16 }}>
               <b>How would you like to get this item?</b>
               <div className="offer-options-list">
-                {item.available_for &&
-                  item.available_for.map((option) => (
+                {allItemPosts.length > 0 &&
+                  allItemPosts[allItemPosts.length - 1].available_for &&
+                  allItemPosts[allItemPosts.length - 1].available_for.map((option) => (
                     <label key={option} className="offer-option">
                       <input
                         type="radio"

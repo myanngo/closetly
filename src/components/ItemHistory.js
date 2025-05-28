@@ -119,6 +119,7 @@ const ItemHistory = () => {
                 initialLikes={0}
                 hideActions={false}
                 post_id={post.post_id}
+                id={post.id}
               />
             );
           })}

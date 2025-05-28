@@ -170,7 +170,7 @@ const AddItem = () => {
         giver: username,
         picture: imageUrl,
         post_id,
-        letgo_method: letgo.join(","),
+        available_for: letgo.map((l) => l === "give-away" ? "giveaway" : l),
       });
       if (insertError)
         throw new Error("Failed to create post: " + insertError.message);
@@ -578,7 +578,7 @@ const AddItem = () => {
                     giver: username,
                     picture: imageUrl,
                     post_id,
-                    letgo_method: letgo.join(","),
+                    available_for: letgo.map((l) => l === "give-away" ? "giveaway" : l),
                   });
                 if (insertError)
                   throw new Error(

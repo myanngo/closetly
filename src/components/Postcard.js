@@ -5,16 +5,18 @@ import { faHeart as solidHeart } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as regularHeart } from "@fortawesome/free-regular-svg-icons";
 import { faComment, faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 import { faCommentDots } from "@fortawesome/free-regular-svg-icons";
+import { faEllipsisH } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
-const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, post_id }) => {
+const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, post_id, id }) => {
   const { user: authUser, username = "" } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Split text into lines for postcard effect
   const lines = text.split(/(?<=\.|!|\?)\s|\n/).filter(Boolean);
@@ -92,6 +94,27 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
     setComments(commentsData || []);
   };
 
+  // Delete post logic
+  const handleDelete = async () => {
+    if (!authUser) return;
+    if (!window.confirm("Are you sure you want to delete this story? This cannot be undone.")) return;
+    console.log('Deleting post', { id, username, post_id });
+    // Check if this is the first post in the thread
+    const { data: postsInThread } = await supabase
+      .from("posts")
+      .select("id, created_at")
+      .eq("post_id", post_id)
+      .order("created_at", { ascending: true });
+    if (postsInThread && postsInThread.length > 0 && Number(postsInThread[0].id) === Number(id)) {
+      // This is the first post in the thread, delete all posts with this post_id
+      await supabase.from("posts").delete().eq("post_id", post_id);
+    } else {
+      // Just delete this post (no giver condition for debugging)
+      await supabase.from("posts").delete().eq("id", Number(id));
+    }
+    window.location.reload();
+  };
+
   return (
     <>
       <div className="postcard-v2">
@@ -135,6 +158,55 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
             <img src={image} alt="story" className="postcard-v2-img" />
           ) : (
             <div className="postcard-v2-img placeholder" />
+          )}
+          {/* Three-dot menu for owner */}
+          {authUser && username && user === `@${username}` && !hideActions && (
+            <div style={{ position: "absolute", top: 10, right: 14, zIndex: 2 }}>
+              <button
+                className="postcard-menu-btn"
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-label="Post options"
+              >
+                <FontAwesomeIcon icon={faEllipsisH} size="lg" color="#fff" />
+              </button>
+              {menuOpen && (
+                <div
+                  className="postcard-menu-dropdown"
+                  style={{
+                    position: "absolute",
+                    top: 28,
+                    right: 0,
+                    background: "#fff",
+                    border: "1px solid #eee",
+                    borderRadius: 6,
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                    minWidth: 120,
+                    zIndex: 10,
+                  }}
+                >
+                  <button
+                    className="postcard-menu-delete"
+                    style={{
+                      color: "#c83f3f",
+                      background: "none",
+                      border: "none",
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "10px 16px",
+                      cursor: "pointer",
+                      fontWeight: 500,
+                    }}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleDelete();
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
