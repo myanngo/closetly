@@ -22,6 +22,8 @@ const SwapOffer = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [availableOfferTypes, setAvailableOfferTypes] = useState([]);
+  const [userEmail, setUserEmail] = useState("");
+  const [userPhone, setUserPhone] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -52,13 +54,17 @@ const SwapOffer = () => {
         }
 
         setCurrentUser(userData);
-        setContactInfo(userData.email || ""); // Default to user's email
+        setUserEmail(userData.email || "");
+        setUserPhone(userData.phone_number || "");
+        setContactInfo(userData.email || userData.phone_number || ""); // Default to user's email
+
+        console.log("User data: ", userData);
 
         // Get target item details
         const { data: itemData, error: itemError } = await supabase
           .from("items")
           .select("*")
-          .eq("latest_post_id", itemId)
+          .eq("id", itemId)
           .single();
 
         if (itemError || !itemData) {
@@ -67,14 +73,35 @@ const SwapOffer = () => {
         }
 
         setTargetItem(itemData);
-        
+        console.log(itemData);
+
+        // Fetch the picture from the latest post using latest_post_id
+        if (itemData.latest_post_id) {
+          const { data: latestPost, error: latestPostError } = await supabase
+            .from("posts")
+            .select("picture")
+            .eq("id", itemData.latest_post_id)
+            .single();
+          if (!latestPostError && latestPost && latestPost.picture) {
+            setTargetItem((prev) => ({ ...prev, picture: latestPost.picture }));
+          }
+        }
+
         // Set available offer types based on letgo_method
         if (itemData.letgo_method) {
-          const methods = Array.isArray(itemData.letgo_method) 
-            ? itemData.letgo_method 
-            : [itemData.letgo_method];
-          setAvailableOfferTypes(methods);
-          // Set initial offer type to first available method
+          let methods;
+          if (typeof itemData.letgo_method === "string") {
+            try {
+              methods = JSON.parse(itemData.letgo_method);
+            } catch {
+              methods = [itemData.letgo_method];
+            }
+          } else if (Array.isArray(itemData.letgo_method)) {
+            methods = itemData.letgo_method;
+          } else {
+            methods = [];
+          }
+          setAvailableOfferTypes(methods.filter(Boolean));
           if (methods.length > 0) {
             setOfferType(methods[0]);
           }
@@ -82,24 +109,50 @@ const SwapOffer = () => {
 
         // Get user's available items for swapping
         const { data: userItemsData, error: userItemsError } = await supabase
-          .from("posts")
-          .select("post_id, title, brand, size, picture")
-          .eq("giver", userData.username)
-          .is("receiver", null); // Only items user still owns
+          .from("items")
+          .select("id, title, brand, size, current_owner, latest_post_id")
+          .eq("current_owner", userData.username);
 
+        if (userItemsData && userItemsData.length > 0) {
+          // Get all latest_post_ids that are not null/undefined
+          const postIds = userItemsData
+            .map((item) => item.latest_post_id)
+            .filter(Boolean);
+
+          if (postIds.length > 0) {
+            const { data: postsData, error: postsError } = await supabase
+              .from("posts")
+              .select("id, picture")
+              .in("id", postIds);
+
+            if (!postsError && postsData) {
+              // Map post id to picture
+              const picMap = {};
+              postsData.forEach((post) => {
+                picMap[post.id] = post.picture;
+              });
+
+              // Attach picture to each item
+              const itemsWithPics = userItemsData.map((item) => ({
+                ...item,
+                picture: picMap[item.latest_post_id] || null,
+              }));
+
+              setUserItems(itemsWithPics);
+            } else {
+              setUserItems(userItemsData); // fallback: no pictures
+            }
+          } else {
+            setUserItems(userItemsData); // fallback: no latest_post_id
+          }
+        } else {
+          setUserItems([]);
+        }
         if (userItemsError) {
           console.error("Error fetching user items:", userItemsError);
           setUserItems([]);
-        } else {
-          // Remove duplicate items (same post_id)
-          const uniqueItems = userItemsData.reduce((acc, item) => {
-            if (!acc.find((existing) => existing.post_id === item.post_id)) {
-              acc.push(item);
-            }
-            return acc;
-          }, []);
-          setUserItems(uniqueItems);
         }
+        console.log("User items: ", userItemsData);
       } catch (err) {
         console.error("Error fetching data:", err);
         setError("An unexpected error occurred");
@@ -134,7 +187,7 @@ const SwapOffer = () => {
       const offerData = {
         item_id: parseInt(itemId),
         from_user: currentUser.username,
-        to_user: targetItem.giver,
+        to_user: targetItem.current_owner,
         offer_type: offerType,
         message: message.trim() || null,
         contact_method: contactMethod,
@@ -165,6 +218,16 @@ const SwapOffer = () => {
       setError(err.message || "Failed to send offer");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Contact method toggle handler
+  const handleContactMethodChange = (method) => {
+    setContactMethod(method);
+    if (method === "email") {
+      setContactInfo(userEmail);
+    } else if (method === "phone") {
+      setContactInfo(userPhone);
     }
   };
 
@@ -269,7 +332,10 @@ const SwapOffer = () => {
               )}
               <div className="item-details">
                 <span className="item-name">{targetItem?.title}</span>
-                <span className="item-owner">from @{targetItem?.giver}</span>
+                <span className="item-owner">
+                  {" "}
+                  from @{targetItem?.current_owner}
+                </span>
               </div>
             </div>
           </div>
@@ -287,11 +353,11 @@ const SwapOffer = () => {
                 <div className="items-grid">
                   {userItems.map((item) => (
                     <div
-                      key={item.post_id}
+                      key={item.id}
                       className={`item-option ${
-                        selectedItem === item.post_id ? "selected" : ""
+                        selectedItem === item.id ? "selected" : ""
                       }`}
-                      onClick={() => setSelectedItem(item.post_id)}
+                      onClick={() => setSelectedItem(item.id)}
                     >
                       {item.picture ? (
                         <img
@@ -340,7 +406,7 @@ const SwapOffer = () => {
             <label htmlFor="message">
               Add a message{" "}
               {offerType === "giveaway"
-                ? "(explain why you would like this item)"
+                ? "(Explain why you'd like this item!)"
                 : "(optional)"}
             </label>
             <textarea
@@ -351,8 +417,8 @@ const SwapOffer = () => {
                 offerType === "swap"
                   ? "Why do you want to swap this item?"
                   : offerType === "lend"
-                  ? "Tell them why you'd like to borrow this item"
-                  : "Tell them why you'd love to have this item"
+                  ? "Tell them why you'd like to borrow this item!"
+                  : "Tell them why you'd love to have this item!"
               }
               rows={3}
               required={offerType === "giveaway"}
@@ -368,7 +434,7 @@ const SwapOffer = () => {
                   type="radio"
                   value="email"
                   checked={contactMethod === "email"}
-                  onChange={(e) => setContactMethod(e.target.value)}
+                  onChange={() => handleContactMethodChange("email")}
                 />
                 Email
               </label>
@@ -377,7 +443,7 @@ const SwapOffer = () => {
                   type="radio"
                   value="phone"
                   checked={contactMethod === "phone"}
-                  onChange={(e) => setContactMethod(e.target.value)}
+                  onChange={() => handleContactMethodChange("phone")}
                 />
                 Phone Number
               </label>

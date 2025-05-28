@@ -59,11 +59,10 @@ const Profile = () => {
         setNumSuggestions(userData.num_suggestions || 0);
 
         // Fetch user's current posts/items
-        const { data: postsData, error: postsError } = await supabase
-          .from("posts")
+        const { data: itemData, error: postsError } = await supabase
+          .from("items")
           .select("*")
-          .eq("giver", userData.username)
-          .is("receiver", null) // Only get items that haven't been given away yet
+          .eq("current_owner", userData.username)
           .order("created_at", { ascending: false });
 
         if (postsError) {
@@ -72,7 +71,7 @@ const Profile = () => {
           return;
         }
 
-        setCurrentItems(postsData || []);
+        setCurrentItems(itemData || []);
       } catch (err) {
         console.error("Error in fetchUserData:", err);
         setError("An unexpected error occurred");

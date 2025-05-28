@@ -57,6 +57,30 @@ const ItemDetail = () => {
   const [newComment, setNewComment] = useState("");
   const [authUser, setAuthUser] = useState(null);
   const [username, setUsername] = useState("");
+  const [itemDetails, setItemDetails] = useState(null);
+  const [itemFetchError, setItemFetchError] = useState(false);
+
+  useEffect(() => {
+    // Fetch item details from items table
+    const fetchItemDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("items")
+          .select("*")
+          .eq("id", Number(itemId))
+          .single();
+        if (error || !data) {
+          setItemFetchError(true);
+        } else {
+          setItemDetails(data);
+          setItemFetchError(false);
+        }
+      } catch (err) {
+        setItemFetchError(true);
+      }
+    };
+    if (itemId) fetchItemDetails();
+  }, [itemId]);
 
   useEffect(() => {
     const fetchItemData = async () => {
@@ -64,12 +88,12 @@ const ItemDetail = () => {
         setLoading(true);
         setError("");
 
-        // Fetch all posts with the same post_id
+        // Fetch all posts with the same item_id
         const { data: postsData, error: postsError } = await supabase
           .from("posts")
           .select("*")
           .eq("item_id", Number(itemId))
-          .order("created_at", { ascending: true }); // Oldest first to find starter
+          .order("created_at", { ascending: true });
 
         if (postsError) {
           console.error("Error fetching posts:", postsError);
@@ -77,12 +101,12 @@ const ItemDetail = () => {
           return;
         }
 
+        setAllItemPosts(postsData || []);
+
         if (!postsData || postsData.length === 0) {
-          setError("Item not found");
+          // Don't set error here, let item fetch handle 'item not found'
           return;
         }
-
-        setAllItemPosts(postsData);
 
         // The first post is the original/starter
         const originalPost = postsData[0];
@@ -145,14 +169,14 @@ const ItemDetail = () => {
     fetchCurrentUser();
   }, []);
 
+  // Fetch user's own items for swap (from items table)
   useEffect(() => {
     const fetchUserItems = async () => {
       if (showOfferModal && selectedOption === "swap" && currentUsername) {
         const { data, error } = await supabase
-          .from("posts")
+          .from("items")
           .select("id, title, brand, size")
-          .eq("giver", currentUsername)
-          .is("receiver", null);
+          .eq("current_owner", currentUsername);
         if (!error && data) setUserItems(data);
       }
     };
@@ -239,9 +263,9 @@ const ItemDetail = () => {
           : null;
       const swapItemIdVal = selectedOption === "swap" ? selectedSwapItem : null;
       const { error } = await supabase.from("swap_offers").insert({
-        item_id: item.id,
+        item_id: itemId,
         from_user: currentUsername,
-        to_user: currentOwner,
+        to_user: currentOwner, // always use the current owner
         status: "pending",
         offer_type: selectedOption,
         swap_item_id: swapItemIdVal,
@@ -282,32 +306,16 @@ const ItemDetail = () => {
     );
   }
 
-  if (error) {
+  if (
+    (itemFetchError && !itemDetails) ||
+    (!itemDetails && !allItemPosts.length)
+  ) {
     return (
       <div className="item-detail-fullscreen">
         <button className="back-btn" onClick={() => navigate(-1)}>
           <FontAwesomeIcon icon={faArrowLeft} size="lg" />
         </button>
-        <div
-          style={{
-            textAlign: "center",
-            padding: "50px",
-            color: "red",
-          }}
-        >
-          {error}
-        </div>
-      </div>
-    );
-  }
-
-  if (!item) {
-    return (
-      <div className="item-detail-fullscreen">
-        <button className="back-btn" onClick={() => navigate(-1)}>
-          <FontAwesomeIcon icon={faArrowLeft} size="lg" />
-        </button>
-        <div style={{ textAlign: "center", padding: "50px" }}>
+        <div style={{ textAlign: "center", padding: "50px", color: "red" }}>
           Item not found
         </div>
       </div>
@@ -319,6 +327,23 @@ const ItemDetail = () => {
       <button className="back-btn" onClick={() => navigate(-1)}>
         <FontAwesomeIcon icon={faArrowLeft} size="lg" />
       </button>
+
+      {itemDetails && (
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: "1.5em",
+            margin: "2px 0",
+            fontFamily: "Instrument Serif",
+            color: "#ff3b3f",
+            marginBottom: "1rem",
+            fontWeight: "500",
+            textAlign: "center",
+          }}
+        >
+          {itemDetails.title}
+        </div>
+      )}
 
       <div className="item-detail-header">
         <div className="item-detail-title">{item.title}</div>
@@ -391,7 +416,7 @@ const ItemDetail = () => {
         {currentUsername && currentUsername !== currentOwner && (
           <button
             className="swap-btn black-btn"
-            onClick={() => handleOfferSwap()}
+            onClick={() => handleOfferSwap(itemId)}
           >
             <FontAwesomeIcon icon={faExchangeAlt} /> make offer
           </button>

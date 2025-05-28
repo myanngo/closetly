@@ -29,6 +29,7 @@ const HomeFeed = () => {
   const [offerActionError, setOfferActionError] = useState("");
   const [showContactModal, setShowContactModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
+  const [itemTitles, setItemTitles] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,6 +76,22 @@ const HomeFeed = () => {
         }
 
         setAllPosts(allPostsData || []);
+
+        // Fetch item titles for all posts
+        const itemIds = [...new Set((allPostsData || []).map(post => post.item_id).filter(Boolean))];
+        if (itemIds.length > 0) {
+          const { data: itemsData, error: itemsError } = await supabase
+            .from("items")
+            .select("id, title")
+            .in("id", itemIds);
+          if (!itemsError && itemsData) {
+            const titlesMap = {};
+            itemsData.forEach(item => {
+              titlesMap[item.id] = item.title;
+            });
+            setItemTitles(titlesMap);
+          }
+        }
 
         // Filter friends' posts if user has friends
         if (userData.friends && userData.friends.length > 0) {
@@ -406,7 +423,7 @@ const HomeFeed = () => {
               <span
                 style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}
               >
-                {post.title}
+                {itemTitles[post.item_id] || ""}
               </span>
             </div>
 

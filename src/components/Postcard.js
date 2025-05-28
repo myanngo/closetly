@@ -9,7 +9,16 @@ import { faEllipsisH } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "../config/supabaseClient";
 import { useAuth } from "../context/AuthContext";
 
-const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, post_id, id, created_at }) => {
+const Postcard = ({
+  user,
+  text,
+  image,
+  initialLikes = 0,
+  hideActions = false,
+  post_id,
+  id,
+  created_at,
+}) => {
   const { user: authUser, username = "" } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
@@ -23,15 +32,19 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
 
   // Utility for relative time
   const getRelativeTime = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
     if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`;
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-    if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)} months ago`;
+    if (diffInSeconds < 3600)
+      return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    if (diffInSeconds < 2592000)
+      return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    if (diffInSeconds < 31536000)
+      return `${Math.floor(diffInSeconds / 2592000)} months ago`;
     return `${Math.floor(diffInSeconds / 31536000)} years ago`;
   };
 
@@ -112,19 +125,27 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
   const handleDelete = async () => {
     if (!authUser) return;
     if (!window.confirm("Are you sure you want to delete this story? This cannot be undone.")) return;
-    console.log('Deleting post', { id, username, post_id });
-    // Check if this is the first post in the thread
-    const { data: postsInThread } = await supabase
+    // Fetch the post to get the item_id
+    const { data: postData, error: postError } = await supabase
       .from("posts")
-      .select("id, created_at")
-      .eq("post_id", id)
-      .order("created_at", { ascending: true });
-    if (postsInThread && postsInThread.length > 0 && Number(postsInThread[0].id) === Number(id)) {
-      // This is the first post in the thread, delete all posts with this post_id
-      await supabase.from("posts").delete().eq("post_id", id);
-    } else {
-      // Just delete this post (no giver condition for debugging)
-      await supabase.from("posts").delete().eq("id", Number(id));
+      .select("item_id")
+      .eq("id", id)
+      .single();
+    if (postError || !postData) {
+      alert("Failed to find post for deletion.");
+      return;
+    }
+    const itemId = postData.item_id;
+    // Delete the post
+    await supabase.from("posts").delete().eq("id", id);
+    // Check if there are any other posts for this item
+    const { data: otherPosts, error: otherPostsError } = await supabase
+      .from("posts")
+      .select("id")
+      .eq("item_id", itemId);
+    if (!otherPostsError && (!otherPosts || otherPosts.length === 0)) {
+      // No other posts for this item, delete the item
+      await supabase.from("items").delete().eq("id", itemId);
     }
     window.location.reload();
   };
@@ -136,7 +157,7 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
           <span className="postcard-v2-user">
             {user}
             {created_at && (
-              <span style={{ color: '#888', fontSize: '0.95em', marginLeft: 8 }}>
+              <span style={{ color: "#888", fontSize: "0.8em", marginLeft: 8 }}>
                 • {getRelativeTime(created_at)}
               </span>
             )}
@@ -162,14 +183,18 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
                 <span className="postcard-like-count">{likes}</span>
               </button>
               <button
-                className={`postcard-comment-btn${showComments ? " active" : ""}`}
+                className={`postcard-comment-btn${
+                  showComments ? " active" : ""
+                }`}
                 onClick={() => setShowComments(!showComments)}
                 aria-label="Comments"
               >
                 <FontAwesomeIcon
                   icon={showComments ? faComment : faCommentDots}
                 />
-                <span className="postcard-comment-count">{comments.length}</span>
+                <span className="postcard-comment-count">
+                  {comments.length}
+                </span>
               </button>
             </div>
           )}
@@ -182,10 +207,17 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
           )}
           {/* Three-dot menu for owner */}
           {authUser && username && user === `@${username}` && !hideActions && (
-            <div style={{ position: "absolute", top: 10, right: 14, zIndex: 2 }}>
+            <div
+              style={{ position: "absolute", top: 10, right: 14, zIndex: 2 }}
+            >
               <button
                 className="postcard-menu-btn"
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 4 }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: 4,
+                }}
                 onClick={() => setMenuOpen((open) => !open)}
                 aria-label="Post options"
               >
@@ -235,7 +267,9 @@ const Postcard = ({ user, text, image, initialLikes = 0, hideActions = false, po
         <div className="postcard-comments-below">
           {comments.map((comment) => (
             <div key={comment.id} className="postcard-comment sticky-tab">
-              <span className="comment-user">@{comment.username || "user"}</span>
+              <span className="comment-user">
+                @{comment.username || "user"}
+              </span>
               <span className="comment-text">{comment.text}</span>
             </div>
           ))}

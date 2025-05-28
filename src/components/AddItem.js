@@ -164,12 +164,11 @@ const AddItem = () => {
         const imageUrl = await uploadImage();
 
         const { error: insertError } = await supabase.from("posts").insert({
-          post_id: parseInt(receivedItemId),
-          title: title.trim(),
           story: story.trim(),
           picture: imageUrl,
           giver: receivedGiver,
           receiver: username,
+          item_id: parseInt(receivedItemId),
         });
 
         if (insertError)
@@ -207,12 +206,11 @@ const AddItem = () => {
         throw new Error(
           "User information not loaded. Please refresh and try again."
         );
-      const [imageUrl, post_id] = await Promise.all([
+      const [imageUrl] = await Promise.all([
         uploadImage(),
-        getNextPostId(),
       ]);
 
-      // First create the post
+      // First create the item entry
       const { data: itemData, error: itemError } = await supabase
         .from("items")
         .insert({
@@ -222,7 +220,6 @@ const AddItem = () => {
           wear,
           current_owner: username,
           original_owner: username,
-          latest_post_id: post_id,
           letgo_method: letgo.map((l) => (l === "give-away" ? "giveaway" : l)),
         })
         .select()
@@ -230,8 +227,6 @@ const AddItem = () => {
 
       if (itemError) {
         console.error("Error creating item:", itemError);
-        // If item creation fails, we should delete the post to maintain consistency
-        await supabase.from("posts").delete().eq("post_id", post_id);
         throw new Error("Failed to create item: " + itemError.message);
       }
 
@@ -239,17 +234,11 @@ const AddItem = () => {
       const { data: postData, error: insertError } = await supabase
         .from("posts")
         .insert({
-          title: title.trim(),
           story: story.trim(),
-          brand: brand.trim(),
-          size: size.trim(),
-          wear,
-          giver: username,
           picture: imageUrl,
+          giver: username,
           item_id: itemData.id,
-          letgo_method: letgo.map((l) =>
-            l === "give-away" ? "giveaway" : l
-          ),
+          letgo_method: letgo.map((l) => (l === "give-away" ? "giveaway" : l)),
         })
         .select()
         .single();
@@ -467,12 +456,11 @@ const AddItem = () => {
                 const { error: insertError } = await supabase
                   .from("posts")
                   .insert({
-                    post_id: parseInt(receivedItemId),
-                    title: title.trim(),
                     story: story.trim(),
                     picture: imageUrl,
                     giver: receivedGiver,
                     receiver: username,
+                    item_id: parseInt(receivedItemId),
                   });
 
                 if (insertError)
@@ -848,13 +836,9 @@ const AddItem = () => {
                   const { data: postData, error: insertError } = await supabase
                     .from("posts")
                     .insert({
-                      title: title.trim(),
                       story: story.trim(),
-                      brand: brand.trim(),
-                      size: size.trim(),
-                      wear,
-                      giver: username,
                       picture: imageUrl,
+                      giver: username,
                       item_id: itemData.id,
                       letgo_method: letgo.map((l) =>
                         l === "give-away" ? "giveaway" : l
@@ -948,13 +932,9 @@ const AddItem = () => {
                 const { data: postData, error: insertError } = await supabase
                   .from("posts")
                   .insert({
-                    title: title.trim(),
                     story: story.trim(),
-                    brand: brand.trim(),
-                    size: size.trim(),
-                    wear,
-                    giver: username,
                     picture: imageUrl,
+                    giver: username,
                     item_id: itemData.id,
                     letgo_method: letgo.map((l) =>
                       l === "give-away" ? "giveaway" : l
