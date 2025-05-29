@@ -170,7 +170,7 @@ const HomeFeed = () => {
 
   // Add a new useEffect to check for newly created posts
   useEffect(() => {
-    if (!showOffersModal || !currentUser) return;
+    if (!currentUser) return;
 
     const checkForNewPosts = async () => {
       try {
@@ -247,14 +247,14 @@ const HomeFeed = () => {
       }
     };
 
-    // Check for new posts when the modal is opened
+    // Check for new posts immediately
     checkForNewPosts();
 
     // Set up an interval to periodically check for new posts
     const intervalId = setInterval(checkForNewPosts, 5000); // Check every 5 seconds
 
     return () => clearInterval(intervalId);
-  }, [showOffersModal, currentUser]);
+  }, [currentUser]);
 
   // Update the fetchAcceptedOffers function in the other useEffect
   useEffect(() => {
