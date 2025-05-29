@@ -28,6 +28,7 @@ const HomeFeed = () => {
   const [offerActionLoading, setOfferActionLoading] = useState(null);
   const [offerActionError, setOfferActionError] = useState("");
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
   const [itemTitles, setItemTitles] = useState({});
 
@@ -167,47 +168,130 @@ const HomeFeed = () => {
     fetchOffers();
   }, [currentUser]);
 
-  // Refetch accepted offers when the offers modal is opened
+  // Add a new useEffect to check for newly created posts
   useEffect(() => {
     if (!showOffersModal || !currentUser) return;
-    const fetchAcceptedOffers = async () => {
+
+    const checkForNewPosts = async () => {
       try {
-        // Fetch accepted offers
+        // Get all accepted offers that don't have a post_id yet
         const { data: offers, error: offersError } = await supabase
           .from("offers")
           .select("*")
           .eq("from_user", currentUser.username)
           .eq("status", "accepted")
-          .eq("post_created", false);
+          .is("post_id", null);
 
         if (offersError) {
-          setAcceptedOffers([]);
+          console.error("Error fetching offers:", offersError);
           return;
         }
 
-        // For each offer, check if a post exists for that item and user after the offer's created_at
-        const offersWithoutPosts = await Promise.all(
+        // For each offer, check if a post exists that was created after the offer
+        const updatedOffers = await Promise.all(
           offers.map(async (offer) => {
-            const { data: existingPost } = await supabase
+            const { data: post } = await supabase
               .from("posts")
               .select("id")
               .eq("item_id", offer.item_id)
               .eq("giver", currentUser.username)
               .gt("created_at", offer.created_at)
               .maybeSingle();
-            if (!existingPost) {
-              // Fetch item details as before
-              const { data: requestedItem } = await supabase
-                .from("items")
-                .select("id, title, brand, size, wear, current_owner, original_owner")
-                .eq("id", offer.item_id)
-                .single();
-              return { ...offer, item: requestedItem, title: requestedItem?.title };
+
+            if (post) {
+              // Post exists, update the offer with the post_id
+              await supabase
+                .from("offers")
+                .update({ post_id: post.id })
+                .eq("id", offer.id);
+
+              // For swap offers, also check the offered item
+              if (offer.offer_type === "swap" && offer.offered_item_id) {
+                const { data: offeredItemPost } = await supabase
+                  .from("posts")
+                  .select("id")
+                  .eq("item_id", offer.offered_item_id)
+                  .eq("giver", currentUser.username)
+                  .gt("created_at", offer.created_at)
+                  .maybeSingle();
+
+                if (offeredItemPost) {
+                  // Both posts exist, update ownership
+                  await supabase
+                    .from("items")
+                    .update({
+                      current_owner: offer.to_user,
+                    })
+                    .in("id", [offer.item_id, offer.offered_item_id]);
+                }
+              } else {
+                // For non-swap offers, update ownership
+                await supabase
+                  .from("items")
+                  .update({
+                    current_owner: offer.to_user,
+                  })
+                  .eq("id", offer.item_id);
+              }
+
+              return null; // Remove this offer from the list
             }
-            return null;
+            return offer; // Keep this offer in the list
           })
         );
-        setAcceptedOffers(offersWithoutPosts.filter(Boolean));
+
+        // Update the accepted offers state with only the offers that don't have posts
+        setAcceptedOffers(updatedOffers.filter(Boolean));
+      } catch (err) {
+        console.error("Error checking for new posts:", err);
+      }
+    };
+
+    // Check for new posts when the modal is opened
+    checkForNewPosts();
+
+    // Set up an interval to periodically check for new posts
+    const intervalId = setInterval(checkForNewPosts, 5000); // Check every 5 seconds
+
+    return () => clearInterval(intervalId);
+  }, [showOffersModal, currentUser]);
+
+  // Update the fetchAcceptedOffers function in the other useEffect
+  useEffect(() => {
+    if (!showOffersModal || !currentUser) return;
+    const fetchAcceptedOffers = async () => {
+      try {
+        // Fetch accepted offers that don't have a post_id yet
+        const { data: offers, error: offersError } = await supabase
+          .from("offers")
+          .select("*")
+          .eq("from_user", currentUser.username)
+          .eq("status", "accepted")
+          .is("post_id", null);
+
+        if (offersError) {
+          setAcceptedOffers([]);
+          return;
+        }
+
+        // For each offer, fetch the item details
+        const offersWithItems = await Promise.all(
+          offers.map(async (offer) => {
+            const { data: requestedItem } = await supabase
+              .from("items")
+              .select(
+                "id, title, brand, size, wear, current_owner, original_owner"
+              )
+              .eq("id", offer.item_id)
+              .single();
+            return {
+              ...offer,
+              item: requestedItem,
+              title: requestedItem?.title,
+            };
+          })
+        );
+        setAcceptedOffers(offersWithItems.filter(Boolean));
       } catch (err) {
         setAcceptedOffers([]);
       }
@@ -281,14 +365,8 @@ const HomeFeed = () => {
         throw updateItemError;
       }
 
-      // Show contact information
-      setSelectedContact({
-        method: offer.contact_method,
-        info: offer.contact_info,
-        userName: offer.from_user,
-        offerType: offer.offer_type,
-      });
-      setShowContactModal(true);
+      // Show completion modal instead of contact modal
+      setShowCompletionModal(true);
 
       // Remove from pending offers
       setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
@@ -391,8 +469,11 @@ const HomeFeed = () => {
           setAcceptedOffers((prev) => prev.filter((o) => o.id !== offer.id));
         } else {
           // Navigate to add page in story mode for the items that don't have posts
-          const itemsWithoutPosts = [offer.item_id, offer.offered_item_id].filter(
-            itemId => !existingPosts?.some(post => post.item_id === itemId)
+          const itemsWithoutPosts = [
+            offer.item_id,
+            offer.offered_item_id,
+          ].filter(
+            (itemId) => !existingPosts?.some((post) => post.item_id === itemId)
           );
           navigate(`/add?mode=story&itemId=${itemsWithoutPosts[0]}`);
         }
@@ -927,6 +1008,65 @@ const HomeFeed = () => {
             </div>
             <button
               onClick={() => setShowContactModal(false)}
+              style={{
+                background: "#2e8b57",
+                color: "#fff",
+                border: "none",
+                borderRadius: 30,
+                padding: "10px 20px",
+                fontWeight: 500,
+                fontSize: "1rem",
+                width: "40%",
+              }}
+            >
+              Got it!
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Completion Modal */}
+      {showCompletionModal && (
+        <div
+          className="offers-modal-backdrop"
+          style={{ zIndex: 1001 }}
+          onClick={() => setShowCompletionModal(false)}
+        >
+          <div
+            className="offers-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "400px" }}
+          >
+            <h2 style={{ color: "#2e8b57", marginBottom: 20 }}>
+              Your Item Has Been Sent! 🎉
+            </h2>
+            <p
+              style={{
+                marginBottom: 20,
+                fontFamily: "Manrope",
+                fontSize: "1.1rem",
+              }}
+            >
+              Congratulations on passing on your item! You've helped create a
+              more sustainable fashion community.
+            </p>
+            <div
+              style={{
+                background: "#f8f9fa",
+                padding: 20,
+                borderRadius: 8,
+                marginBottom: 20,
+                textAlign: "center",
+              }}
+            >
+              <div
+                style={{ fontSize: "1.2rem", color: "#666", marginBottom: 8 }}
+              >
+                Keep up with the new owner's stories!
+              </div>
+            </div>
+            <button
+              onClick={() => setShowCompletionModal(false)}
               style={{
                 background: "#2e8b57",
                 color: "#fff",
