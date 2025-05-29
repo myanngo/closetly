@@ -16,7 +16,6 @@ const Profile = () => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
-  const [profilePic, setProfilePic] = useState("");
   const [numSwaps, setNumSwaps] = useState(0);
   const [numStories, setNumStories] = useState(0);
   const [numSuggestions, setNumSuggestions] = useState(0);
@@ -27,11 +26,15 @@ const Profile = () => {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(false);
   const [newBio, setNewBio] = useState("");
-  const [newPicFile, setNewPicFile] = useState(null);
   const [showFriendsModal, setShowFriendsModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [addingFriend, setAddingFriend] = useState(false);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [showFriendManagementModal, setShowFriendManagementModal] =
+    useState(false);
 
   const navigate = useNavigate();
 
@@ -71,25 +74,42 @@ const Profile = () => {
         setBio(userData.bio || "");
         setNewBio(userData.bio || "");
         setUsername(userData.username || "");
+        console.log("User's friends array from database:", userData.friends);
         setFriends(userData.friends || []);
+        setBlockedUsers(userData.blocked_users || []);
         setNumSwaps(userData.num_swaps || 0);
         setNumStories(userData.num_stories || 0);
         setNumSuggestions(userData.num_suggestions || 0);
-        setProfilePic(userData.profile_pic || "");
 
         // Fetch friend details for the row
         if (userData.friends && userData.friends.length > 0) {
+          console.log("Fetching details for friends:", userData.friends);
           const { data: friendsData, error: friendsError } = await supabase
             .from("users")
-            .select("username, full_name, profile_pic")
+            .select("username, full_name")
             .in("username", userData.friends);
-          if (!friendsError && friendsData) {
-            setFriendDetails(friendsData);
-          } else {
+
+          if (friendsError) {
+            console.error("Error fetching friend details:", friendsError);
             setFriendDetails([]);
+          } else {
+            console.log("Successfully fetched friend details:", friendsData);
+            setFriendDetails(friendsData);
           }
         } else {
+          console.log("No friends found in user data");
           setFriendDetails([]);
+        }
+
+        // Fetch pending friend requests
+        const { data: requestsData, error: requestsError } = await supabase
+          .from("friend_requests")
+          .select("*")
+          .eq("to_username", userData.username)
+          .eq("status", "pending");
+
+        if (!requestsError && requestsData) {
+          setPendingRequests(requestsData);
         }
 
         // Fetch user's current items
@@ -160,47 +180,216 @@ const Profile = () => {
       .eq("username", username);
   };
 
-  const handlePicSave = async () => {
-    if (!newPicFile) return;
-    // Upload image to storage (implement as needed)
-    const fileExt = newPicFile.name.split(".").pop();
-    const fileName = `${username}-profile.${fileExt}`;
-    const filePath = `profile/${fileName}`;
-    const { error: uploadError } = await supabase.storage
-      .from("profile")
-      .upload(filePath, newPicFile, { upsert: true });
-    if (!uploadError) {
-      const { data } = supabase.storage.from("profile").getPublicUrl(filePath);
-      setProfilePic(data.publicUrl);
-      await supabase
-        .from("users")
-        .update({ profile_pic: data.publicUrl })
-        .eq("username", username);
-    }
-    setEditing(false);
-    setNewPicFile(null);
-  };
-
   // Friend search modal logic
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setAddingFriend(true);
-    const { data, error } = await supabase
-      .from("users")
-      .select("username, full_name")
-      .ilike("username", `%${searchQuery.trim()}%`);
-    setSearchResults(data || []);
-    setAddingFriend(false);
+    try {
+      // First get all users that match the search query (case-insensitive)
+      const { data: searchData, error: searchError } = await supabase
+        .from("users")
+        .select("username, full_name")
+        .ilike("username", `%${searchQuery.trim().toLowerCase()}%`)
+        .neq("username", username); // Don't show current user
+
+      if (searchError) throw searchError;
+
+      // Then filter out blocked users
+      const filteredResults = searchData.filter(
+        (user) => !blockedUsers.includes(user.username)
+      );
+
+      // Check which users have pending requests
+      const { data: pendingData, error: pendingError } = await supabase
+        .from("friend_requests")
+        .select("to_username")
+        .eq("from_username", username)
+        .eq("status", "pending");
+
+      if (!pendingError && pendingData) {
+        const pendingUsernames = pendingData.map((req) => req.to_username);
+        // Mark users with pending requests
+        const resultsWithStatus = filteredResults.map((user) => ({
+          ...user,
+          requestSent: pendingUsernames.includes(user.username),
+        }));
+        setSearchResults(resultsWithStatus);
+        console.log(resultsWithStatus);
+      } else {
+        setSearchResults(filteredResults);
+      }
+    } catch (err) {
+      console.error("Error searching users:", err);
+      setSearchResults([]);
+    } finally {
+      setAddingFriend(false);
+    }
   };
 
-  const handleAddFriend = async (friendUsername) => {
-    if (friends.includes(friendUsername)) return;
-    const newFriends = [...friends, friendUsername];
-    setFriends(newFriends);
-    await supabase
-      .from("users")
-      .update({ friends: newFriends })
-      .eq("username", username);
+  const handleSendFriendRequest = async (friendUsername) => {
+    try {
+      const { error } = await supabase.from("friend_requests").insert({
+        from_username: username,
+        to_username: friendUsername,
+        status: "pending",
+      });
+
+      if (error) throw error;
+
+      // Update UI to show pending request
+      setSearchResults((prev) =>
+        prev.map((user) =>
+          user.username === friendUsername
+            ? { ...user, requestSent: true }
+            : user
+        )
+      );
+    } catch (err) {
+      console.error("Error sending friend request:", err);
+    }
+  };
+
+  const handleAcceptRequest = async (requestId, fromUsername) => {
+    try {
+      console.log("Accepting friend request from:", fromUsername);
+
+      // Update request status
+      const { error: requestError } = await supabase
+        .from("friend_requests")
+        .update({ status: "accepted" })
+        .eq("id", requestId);
+
+      if (requestError) {
+        console.error("Error updating request status:", requestError);
+        throw requestError;
+      }
+      console.log("Friend request status updated to accepted");
+
+      // Add to friends list for both users
+      const newFriends = [...(friends || []), fromUsername];
+      setFriends(newFriends);
+      console.log("Updating current user's friends list:", newFriends);
+
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({ friends: newFriends })
+        .eq("username", username);
+
+      if (updateError) {
+        console.error("Error updating current user's friends:", updateError);
+        throw updateError;
+      }
+      console.log("Current user's friends list updated successfully");
+
+      // Update the other user's friends list
+      const { data: otherUser, error: otherUserError } = await supabase
+        .from("users")
+        .select("friends")
+        .eq("username", fromUsername)
+        .single();
+
+      if (otherUserError) {
+        console.error("Error fetching other user's data:", otherUserError);
+        throw otherUserError;
+      }
+
+      if (otherUser) {
+        const otherUserFriends = [...(otherUser.friends || []), username];
+        console.log("Updating other user's friends list:", otherUserFriends);
+
+        const { error: otherUpdateError } = await supabase
+          .from("users")
+          .update({ friends: otherUserFriends })
+          .eq("username", fromUsername);
+
+        if (otherUpdateError) {
+          console.error(
+            "Error updating other user's friends:",
+            otherUpdateError
+          );
+          console.error(
+            "Full error details:",
+            JSON.stringify(otherUpdateError, null, 2)
+          );
+          throw otherUpdateError;
+        }
+        console.log("Other user's friends list updated successfully");
+      }
+
+      // Remove from pending requests
+      setPendingRequests((prev) => prev.filter((req) => req.id !== requestId));
+      console.log("Friend request handling completed successfully");
+    } catch (err) {
+      console.error("Error accepting friend request:", err);
+      console.error("Full error details:", JSON.stringify(err, null, 2));
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    try {
+      const { error } = await supabase
+        .from("friend_requests")
+        .update({ status: "rejected" })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      // Remove from pending requests
+      setPendingRequests((prev) => prev.filter((req) => req.id !== requestId));
+    } catch (err) {
+      console.error("Error rejecting friend request:", err);
+    }
+  };
+
+  const handleBlockUser = async (usernameToBlock) => {
+    try {
+      // Add to blocked users
+      const newBlockedUsers = [...blockedUsers, usernameToBlock];
+      setBlockedUsers(newBlockedUsers);
+
+      // Update database
+      await supabase
+        .from("users")
+        .update({ blocked_users: newBlockedUsers })
+        .eq("username", username);
+
+      // Remove from friends if they were friends
+      if (friends.includes(usernameToBlock)) {
+        const newFriends = friends.filter((f) => f !== usernameToBlock);
+        setFriends(newFriends);
+        await supabase
+          .from("users")
+          .update({ friends: newFriends })
+          .eq("username", username);
+      }
+
+      // Update friend details
+      setFriendDetails((prev) =>
+        prev.filter((f) => f.username !== usernameToBlock)
+      );
+    } catch (err) {
+      console.error("Error blocking user:", err);
+    }
+  };
+
+  const handleRemoveFriend = async (friendUsername) => {
+    try {
+      // Remove from friends list
+      const newFriends = friends.filter((f) => f !== friendUsername);
+      setFriends(newFriends);
+
+      await supabase
+        .from("users")
+        .update({ friends: newFriends })
+        .eq("username", username);
+
+      // Update friend details
+      setFriendDetails((prev) =>
+        prev.filter((f) => f.username !== friendUsername)
+      );
+    } catch (err) {
+      console.error("Error removing friend:", err);
+    }
   };
 
   if (loading) {
@@ -250,24 +439,22 @@ const Profile = () => {
       </button>
       <div className="profile-header">
         <div className="avatar-placeholder" style={{ position: "relative" }}>
-          {profilePic ? (
-            <img
-              src={profilePic}
-              alt="profile"
-              className="profile-pic-img"
-              style={{ width: 64, height: 64, borderRadius: "50%" }}
-            />
-          ) : (
-            getInitials(name)
-          )}
-          {editing && (
-            <input
-              type="file"
-              accept="image/*"
-              style={{ position: "absolute", bottom: 0, right: 0 }}
-              onChange={(e) => setNewPicFile(e.target.files[0])}
-            />
-          )}
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: "50%",
+              background: "#eee",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 600,
+              fontSize: 24,
+              color: "#666",
+            }}
+          >
+            {getInitials(name)}
+          </div>
         </div>
         <div>
           <div className="profile-name">{name}</div>
@@ -288,7 +475,6 @@ const Profile = () => {
                   onClick={() => {
                     setEditing(false);
                     setNewBio(bio);
-                    setNewPicFile(null);
                   }}
                 >
                   Cancel
@@ -320,18 +506,42 @@ const Profile = () => {
       <div className="profile-friends">
         <div
           className="profile-friends-label"
-          style={{ color: "#ff3b3f", marginBottom: 8 }}
+          style={{
+            color: "#ff3b3f",
+            marginBottom: 8,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
         >
-          Friends
+          <span>Friends</span>
+          {friendDetails.length > 0 && (
+            <button
+              onClick={() => setShowFriendManagementModal(true)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#666",
+                cursor: "pointer",
+                fontSize: "0.9em",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              Manage
+            </button>
+          )}
         </div>
         <div
           className="profile-friends-row"
           style={{
             display: "flex",
-            gap: 18,
+            gap: 16,
             overflowX: "auto",
             alignItems: "center",
             paddingBottom: 8,
+            paddingTop: 4,
           }}
         >
           {friendDetails.map((f) => (
@@ -341,66 +551,74 @@ const Profile = () => {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                minWidth: 60,
+                minWidth: 70,
+                cursor: "pointer",
               }}
+              onClick={() => navigate(`/profile/${f.username}`)}
             >
-              {f.profile_pic ? (
-                <img
-                  src={f.profile_pic}
-                  alt="pfp"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "50%",
-                    background: "#eee",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 600,
-                  }}
-                >
-                  {f.full_name ? getInitials(f.full_name) : f.username[0]}
-                </div>
-              )}
               <div
                 style={{
-                  fontSize: 12,
+                  width: 50,
+                  height: 50,
+                  borderRadius: "50%",
+                  background: "#eee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: 600,
+                  fontSize: 18,
+                  color: "#666",
+                  border: "2px solid #fff",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                }}
+              >
+                {f.full_name ? getInitials(f.full_name) : f.username[0]}
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
                   color: "#444",
-                  marginTop: 2,
+                  marginTop: 6,
                   textAlign: "center",
-                  maxWidth: 60,
+                  maxWidth: 70,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  fontWeight: 500,
+                }}
+              >
+                {f.full_name || f.username}
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#888",
+                  textAlign: "center",
+                  maxWidth: 70,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                 }}
               >
-                {f.full_name || f.username}
+                @{f.username}
               </div>
             </div>
           ))}
           {/* Add friend button */}
           <div
             style={{
-              width: 40,
-              height: 40,
+              width: 50,
+              height: 50,
               borderRadius: "50%",
               border: "2px dashed #ff3b3f",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               color: "#ff3b3f",
-              fontSize: 22,
+              fontSize: 24,
               cursor: "pointer",
-              minWidth: 40,
+              minWidth: 50,
+              alignSelf: "flex-start",
             }}
             onClick={() => setShowFriendsModal(true)}
             title="Add friend"
@@ -517,7 +735,85 @@ const Profile = () => {
               <FontAwesomeIcon icon={faTimes} />
             </button>
             <h2 style={{ color: "#ff3b3f", fontSize: "2rem" }}>Find Friends</h2>
-            <p style={{ marginTop: "-1.5em" }}> Search for people you know!</p>
+            <p style={{ marginTop: "-1.5em" }}> Who do you want to discover?</p>
+
+            {/* Pending Requests Section */}
+            {pendingRequests.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <h3
+                  style={{
+                    color: "#666",
+                    fontSize: "1.1rem",
+                    marginBottom: 10,
+                  }}
+                >
+                  Pending Requests
+                </h3>
+                {pendingRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      marginBottom: 10,
+                      padding: 10,
+                      background: "#f5f5f5",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "50%",
+                        background: "#eee",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {request.from_username[0]}
+                    </div>
+                    <span>@{request.from_username}</span>
+                    <div
+                      style={{ marginLeft: "auto", display: "flex", gap: 8 }}
+                    >
+                      <button
+                        onClick={() =>
+                          handleAcceptRequest(request.id, request.from_username)
+                        }
+                        style={{
+                          background: "#4CAF50",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleRejectRequest(request.id)}
+                        style={{
+                          background: "#f44336",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                        }}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div style={{ display: "flex", flexDirection: "row", gap: "10px" }}>
               <input
                 type="text"
@@ -574,10 +870,19 @@ const Profile = () => {
                       ? getInitials(user.full_name)
                       : user.username[0]}
                   </div>
-                  <span>@{user.username}</span>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>
+                      {user.full_name || user.username}
+                    </div>
+                    <div style={{ color: "#888", fontSize: 13, marginTop: 2 }}>
+                      @{user.username}
+                    </div>
+                  </div>
                   <button
-                    onClick={() => handleAddFriend(user.username)}
-                    disabled={friends.includes(user.username)}
+                    onClick={() => handleSendFriendRequest(user.username)}
+                    disabled={
+                      user.requestSent || friends.includes(user.username)
+                    }
                     style={{
                       marginLeft: "auto",
                       background: "#000",
@@ -588,8 +893,106 @@ const Profile = () => {
                       padding: "10px 10px",
                     }}
                   >
-                    {friends.includes(user.username) ? "Added" : "Add Friend"}
+                    {user.requestSent
+                      ? "Request Sent"
+                      : friends.includes(user.username)
+                      ? "Added"
+                      : "Add Friend"}
                   </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Friend Management Modal */}
+      {showFriendManagementModal && (
+        <div
+          className="profile-modal-overlay"
+          onClick={() => setShowFriendManagementModal(false)}
+        >
+          <div
+            className="profile-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="profile-modal-close"
+              onClick={() => setShowFriendManagementModal(false)}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+            <h2 style={{ color: "#ff3b3f", fontSize: "2rem" }}>
+              Manage Friends
+            </h2>
+            <div style={{ marginTop: 20 }}>
+              {friendDetails.map((friend) => (
+                <div
+                  key={friend.username}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    marginBottom: 15,
+                    padding: 10,
+                    background: "#f5f5f5",
+                    borderRadius: 8,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: "50%",
+                      background: "#eee",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 600,
+                      fontSize: 16,
+                      color: "#666",
+                    }}
+                  >
+                    {friend.full_name
+                      ? getInitials(friend.full_name)
+                      : friend.username[0]}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>
+                      {friend.full_name || friend.username}
+                    </div>
+                    <div style={{ color: "#666", fontSize: "0.9em" }}>
+                      @{friend.username}
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => handleRemoveFriend(friend.username)}
+                      style={{
+                        background: "#f44336",
+                        color: "white",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      onClick={() => handleBlockUser(friend.username)}
+                      style={{
+                        background: "#666",
+                        color: "white",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Block
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -90,8 +90,8 @@ const Friends = () => {
                 </div>
               )}
               <div>
-                <div style={{ fontWeight: 600 }}>{f.full_name || f.username}</div>
-                <div style={{ color: "#888", fontSize: 13 }}>@{f.username}</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>{f.full_name || f.username}</div>
+                <div style={{ color: "#888", fontSize: 13, marginTop: 2 }}>@{f.username}</div>
               </div>
             </div>
           ))}
