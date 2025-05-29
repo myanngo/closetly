@@ -104,12 +104,6 @@ const CompleteProfile = () => {
               onChange={(e) => setPhoneNumber(e.target.value)}
             />
           </div>
-          <div>
-            <p>
-              Note: your phone number will be used for the swapping feature. By
-              signing up you agree to you phone number being used.
-            </p>
-          </div>
           <button
             type="submit"
             className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700"

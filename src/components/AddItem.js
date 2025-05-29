@@ -3,12 +3,7 @@ import "./AddItem.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "../config/supabaseClient";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faPlus,
-  faPen,
-  faArrowLeft,
-  faLock,
-} from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import clothesHanger from "../assets/clothesonhanger.png";
 import Postcard from "./Postcard";
 
@@ -28,11 +23,6 @@ const AddItem = () => {
   const [userItems, setUserItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [step, setStep] = useState(0);
-
-  // New state for received mode
-  const [isReceivedMode, setIsReceivedMode] = useState(false);
-  const [receivedItemId, setReceivedItemId] = useState("");
-  const [receivedGiver, setReceivedGiver] = useState("");
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,8 +58,10 @@ const AddItem = () => {
       }
     };
     fetchUser();
+  }, []);
 
-    // Fetch user's items for story mode
+  // Fetch user's items for story mode
+  useEffect(() => {
     const fetchUserItems = async () => {
       if (!username) return;
       const { data, error } = await supabase
@@ -78,6 +70,7 @@ const AddItem = () => {
         .eq("current_owner", username);
       if (!error && data) setUserItems(data);
     };
+
     if (mode === "story" && username) fetchUserItems();
   }, [username, mode]);
 
@@ -86,19 +79,14 @@ const AddItem = () => {
     const params = new URLSearchParams(location.search);
     const itemId = params.get("itemId");
     const modeParam = params.get("mode");
-    const titleParam = params.get("title");
-    const giverParam = params.get("giver");
 
-    if (modeParam === "received" && itemId && titleParam && giverParam) {
-      // Received mode - creating post for accepted swap offer
-      setIsReceivedMode(true);
-      setMode("received");
-      setReceivedItemId(itemId);
-      setReceivedGiver(decodeURIComponent(giverParam));
-      setTitle(decodeURIComponent(titleParam));
-      setStep(1); // Skip selection step
+    if (modeParam === "story" && itemId) {
+      // Story mode with pre-selected item
+      setMode("story");
+      setStep(1);
+      setSelectedItemId(itemId);
     } else if (itemId && !modeParam) {
-      // Existing story mode logic
+      // Legacy: existing story mode logic
       setMode("story");
       setStep(1);
       setSelectedItemId(itemId);
@@ -130,63 +118,19 @@ const AddItem = () => {
     }
   };
 
-  const getNextPostId = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("posts")
-        .select("post_id")
-        .order("post_id", { ascending: false })
-        .limit(1);
-
-      if (error) {
-        console.error("Error getting next post ID:", error);
-        throw error;
-      }
-
-      if (data.length === 0) return 1;
-      return data[0].post_id + 1;
-    } catch (err) {
-      console.error("Error in getNextPostId:", err);
-      throw err;
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      if (mode === "received") {
-        // Handle received mode - create post with specific post_id and receiver
-        if (!story.trim()) throw new Error("Story is required");
-
-        const imageUrl = await uploadImage();
-
-        const { error: insertError } = await supabase.from("posts").insert({
-          story: story.trim(),
-          picture: imageUrl,
-          giver: receivedGiver,
-          receiver: username,
-          item_id: parseInt(receivedItemId),
-        });
-
-        if (insertError)
-          throw new Error("Failed to create post: " + insertError.message);
-
-        navigate("/", {
-          state: {
-            message: "Post created successfully! The swap is now complete.",
-          },
-        });
-        return;
-      }
-
       if (mode === "story") {
         if (!selectedItemId) throw new Error("Please select an item");
         if (!story.trim()) throw new Error("Story is required");
+
         // Upload image if provided
         const imageUrl = await uploadImage();
+
         // Insert a new post for the existing item
         const { error: insertError } = await supabase.from("posts").insert({
           item_id: selectedItemId,
@@ -194,8 +138,10 @@ const AddItem = () => {
           picture: imageUrl,
           giver: username,
         });
+
         if (insertError)
           throw new Error("Failed to add story: " + insertError.message);
+
         navigate("/");
         return;
       }
@@ -206,9 +152,8 @@ const AddItem = () => {
         throw new Error(
           "User information not loaded. Please refresh and try again."
         );
-      const [imageUrl] = await Promise.all([
-        uploadImage(),
-      ]);
+
+      const imageUrl = await uploadImage();
 
       // First create the item entry
       const { data: itemData, error: itemError } = await supabase
@@ -265,7 +210,6 @@ const AddItem = () => {
       }
 
       console.log("Successfully created item and post:", itemData);
-
       navigate("/");
     } catch (err) {
       setError(err.message || "An error occurred while creating your post");
@@ -274,36 +218,7 @@ const AddItem = () => {
     }
   };
 
-  const renderPreview = (isStory, isReceived = false) => {
-    if (isReceived) {
-      return (
-        <div className="add-preview">
-          <div className="add-title">Preview your received item post</div>
-          <div
-            style={{
-              background: "#e8f5e8",
-              padding: "12px",
-              borderRadius: "8px",
-              marginBottom: "16px",
-              textAlign: "center",
-              color: "#2e8b57",
-              fontWeight: "500",
-            }}
-          >
-            🎉 You received this item from @{receivedGiver}!
-          </div>
-          <Postcard
-            user={`@${receivedGiver} → @${username}`}
-            text={story}
-            image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
-            initialLikes={0}
-            hideActions={true}
-            post_id={parseInt(receivedItemId) || 0}
-          />
-        </div>
-      );
-    }
-
+  const renderPreview = (isStory) => {
     if (isStory) {
       const item = userItems.find((i) => i.id === selectedItemId);
       return (
@@ -348,151 +263,7 @@ const AddItem = () => {
     }
   };
 
-  // Handle received mode flow
-  if (mode === "received") {
-    if (step === 1) {
-      return (
-        <div className="add-bg">
-          <button
-            className="add-back-btn"
-            type="button"
-            onClick={() => navigate("/")}
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-          </button>
-          <div className="add-title">Create Post for Received Item</div>
-          <div
-            style={{
-              background: "#e8f5e8",
-              padding: "16px",
-              borderRadius: "8px",
-              marginBottom: "20px",
-              textAlign: "center",
-              color: "#2e8b57",
-            }}
-          >
-            🎉 Congratulations! You received "{title}" from @{receivedGiver}
-          </div>
-          {error && <div className="add-error">{error}</div>}
-          <form
-            className="add-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setStep(2);
-            }}
-          >
-            <label className="subheader">
-              Item Title{" "}
-              <FontAwesomeIcon
-                icon={faLock}
-                style={{ marginLeft: 8, color: "#999" }}
-              />
-            </label>
-            <input
-              className="add-input"
-              value={title}
-              disabled
-              style={{
-                backgroundColor: "#f5f5f5",
-                color: "#666",
-                cursor: "not-allowed",
-              }}
-            />
-            <label className="subheader">Your Story</label>
-            <textarea
-              className="add-textarea"
-              placeholder="Tell us about receiving this item! How do you feel about it? What are your plans for it?"
-              value={story}
-              onChange={(e) => setStory(e.target.value)}
-              required
-            />
-            <div className="picture-upload">
-              <p>Upload a picture of you with the item (optional)</p>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setPictureFile(e.target.files[0])}
-              />
-              {pictureFile && (
-                <img
-                  src={URL.createObjectURL(pictureFile)}
-                  alt="preview"
-                  className="big-image-preview"
-                />
-              )}
-            </div>
-            <button
-              type="submit"
-              className="add-btn"
-              style={{ background: "#2e8b57", color: "#fff" }}
-            >
-              preview
-            </button>
-          </form>
-        </div>
-      );
-    }
-
-    if (step === 2) {
-      return (
-        <div className="add-bg">
-          <button
-            className="add-back-btn"
-            type="button"
-            onClick={() => setStep(1)}
-          >
-            <FontAwesomeIcon icon={faArrowLeft} />
-          </button>
-          {renderPreview(false, true)}
-          <button
-            className="add-btn"
-            style={{ background: "#2e8b57", color: "#fff", marginTop: 24 }}
-            onClick={async () => {
-              setLoading(true);
-              setError("");
-              try {
-                const imageUrl = pictureFile ? await uploadImage() : null;
-
-                const { error: insertError } = await supabase
-                  .from("posts")
-                  .insert({
-                    story: story.trim(),
-                    picture: imageUrl,
-                    giver: receivedGiver,
-                    receiver: username,
-                    item_id: parseInt(receivedItemId),
-                  });
-
-                if (insertError)
-                  throw new Error(
-                    "Failed to create post: " + insertError.message
-                  );
-
-                navigate("/", {
-                  state: {
-                    message:
-                      "Post created successfully! The swap is now complete.",
-                  },
-                });
-              } catch (err) {
-                setError(
-                  err.message || "An error occurred while creating your post"
-                );
-              } finally {
-                setLoading(false);
-              }
-            }}
-            disabled={loading}
-          >
-            {loading ? "posting..." : "complete swap"}
-          </button>
-          {error && <div className="add-error">{error}</div>}
-        </div>
-      );
-    }
-  }
-
-  // Rest of the existing component logic remains the same
+  // Initial selection screen
   if (step === 0) {
     return (
       <div className="add-bg">
@@ -538,6 +309,7 @@ const AddItem = () => {
     );
   }
 
+  // Story mode flow
   if (mode === "story") {
     if (step === 1) {
       return (
@@ -600,6 +372,7 @@ const AddItem = () => {
         </div>
       );
     }
+
     if (step === 2) {
       return (
         <div className="add-bg">
@@ -640,8 +413,9 @@ const AddItem = () => {
                 setLoading(false);
               }
             }}
+            disabled={loading}
           >
-            post
+            {loading ? "posting..." : "post"}
           </button>
           {error && <div className="add-error">{error}</div>}
         </div>
@@ -649,6 +423,7 @@ const AddItem = () => {
     }
   }
 
+  // New item mode flow
   if (mode === "new") {
     if (step === 1) {
       return (
@@ -713,6 +488,7 @@ const AddItem = () => {
         </div>
       );
     }
+
     if (step === 2) {
       return (
         <div className="add-bg">
@@ -803,89 +579,15 @@ const AddItem = () => {
             <button
               type="submit"
               className="add-btn"
-              style={{ background: "#222", color: "#fff", marginTop: 24 }}
-              onClick={async () => {
-                setLoading(true);
-                setError("");
-                try {
-                  const imageUrl = pictureFile ? await uploadImage() : null;
-
-                  // First create the item entry
-                  const { data: itemData, error: itemError } = await supabase
-                    .from("items")
-                    .insert({
-                      title: title.trim(),
-                      brand: brand.trim(),
-                      size: size.trim(),
-                      wear,
-                      current_owner: username,
-                      original_owner: username,
-                      letgo_method: letgo.map((l) =>
-                        l === "give-away" ? "giveaway" : l
-                      ),
-                    })
-                    .select()
-                    .single();
-
-                  if (itemError) {
-                    console.error("Error creating item:", itemError);
-                    throw new Error("Failed to create item: " + itemError.message);
-                  }
-
-                  // Then create the post with the item's id
-                  const { data: postData, error: insertError } = await supabase
-                    .from("posts")
-                    .insert({
-                      story: story.trim(),
-                      picture: imageUrl,
-                      giver: username,
-                      item_id: itemData.id,
-                      letgo_method: letgo.map((l) =>
-                        l === "give-away" ? "giveaway" : l
-                      ),
-                    })
-                    .select()
-                    .single();
-
-                  if (insertError) {
-                    console.error("Error creating post:", insertError);
-                    // If post creation fails, we should delete the item to maintain consistency
-                    await supabase.from("items").delete().eq("id", itemData.id);
-                    throw new Error("Failed to create post: " + insertError.message);
-                  }
-
-                  // Update the item with the latest post id
-                  const { error: updateError } = await supabase
-                    .from("items")
-                    .update({ latest_post_id: postData.id })
-                    .eq("id", itemData.id);
-
-                  if (updateError) {
-                    console.error("Error updating item:", updateError);
-                    // If update fails, we should clean up both the post and item
-                    await supabase.from("posts").delete().eq("id", postData.id);
-                    await supabase.from("items").delete().eq("id", itemData.id);
-                    throw new Error("Failed to update item: " + updateError.message);
-                  }
-
-                  console.log("Successfully created item and post:", itemData);
-                  navigate("/");
-                } catch (err) {
-                  setError(
-                    err.message || "An error occurred while creating your post"
-                  );
-                } finally {
-                  setLoading(false);
-                }
-              }}
+              style={{ background: "#222", color: "#fff" }}
             >
-              post
+              preview
             </button>
-            {error && <div className="add-error">{error}</div>}
           </form>
         </div>
       );
     }
+
     if (step === 3) {
       return (
         <div className="add-bg">
@@ -925,7 +627,9 @@ const AddItem = () => {
 
                 if (itemError) {
                   console.error("Error creating item:", itemError);
-                  throw new Error("Failed to create item: " + itemError.message);
+                  throw new Error(
+                    "Failed to create item: " + itemError.message
+                  );
                 }
 
                 // Then create the post with the item's id
@@ -947,7 +651,9 @@ const AddItem = () => {
                   console.error("Error creating post:", insertError);
                   // If post creation fails, we should delete the item to maintain consistency
                   await supabase.from("items").delete().eq("id", itemData.id);
-                  throw new Error("Failed to create post: " + insertError.message);
+                  throw new Error(
+                    "Failed to create post: " + insertError.message
+                  );
                 }
 
                 // Update the item with the latest post id
@@ -961,7 +667,9 @@ const AddItem = () => {
                   // If update fails, we should clean up both the post and item
                   await supabase.from("posts").delete().eq("id", postData.id);
                   await supabase.from("items").delete().eq("id", itemData.id);
-                  throw new Error("Failed to update item: " + updateError.message);
+                  throw new Error(
+                    "Failed to update item: " + updateError.message
+                  );
                 }
 
                 console.log("Successfully created item and post:", itemData);
@@ -974,8 +682,9 @@ const AddItem = () => {
                 setLoading(false);
               }
             }}
+            disabled={loading}
           >
-            post
+            {loading ? "posting..." : "post"}
           </button>
           {error && <div className="add-error">{error}</div>}
         </div>

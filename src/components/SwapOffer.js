@@ -197,7 +197,7 @@ const SwapOffer = () => {
       };
 
       if (offerType === "swap") {
-        offerData.swap_item_id = selectedItem;
+        offerData.item_id = selectedItem;
       } else if (offerType === "lend") {
         offerData.lend_duration = lendDuration;
       }
