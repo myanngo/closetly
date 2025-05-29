@@ -78,7 +78,11 @@ const HomeFeed = () => {
         setAllPosts(allPostsData || []);
 
         // Fetch item titles for all posts
-        const itemIds = [...new Set((allPostsData || []).map(post => post.item_id).filter(Boolean))];
+        const itemIds = [
+          ...new Set(
+            (allPostsData || []).map((post) => post.item_id).filter(Boolean)
+          ),
+        ];
         if (itemIds.length > 0) {
           const { data: itemsData, error: itemsError } = await supabase
             .from("items")
@@ -86,7 +90,7 @@ const HomeFeed = () => {
             .in("id", itemIds);
           if (!itemsError && itemsData) {
             const titlesMap = {};
-            itemsData.forEach(item => {
+            itemsData.forEach((item) => {
               titlesMap[item.id] = item.title;
             });
             setItemTitles(titlesMap);
@@ -242,43 +246,21 @@ const HomeFeed = () => {
         .update({ post_created: true })
         .eq("id", offer.id);
 
-      // Get original item details
-      const { data: originalItem } = await supabase
+      // Update the item ownership instead of creating a new item
+      const { error: updateError } = await supabase
         .from("items")
-        .select("id, title, brand, size, wear, letgo_method")
-        .eq("id", offer.item_id)
-        .single();
+        .update({
+          current_owner: offer.to_user, // Update current owner to the person who received the item
+        })
+        .eq("id", offer.item_id);
 
-      if (originalItem) {
-        // Create new item entry
-        const { data: newItem, error: itemError } = await supabase
-          .from("items")
-          .insert({
-            title: originalItem.title,
-            brand: originalItem.brand,
-            size: originalItem.size,
-            wear: originalItem.wear,
-            current_owner: offer.to_user,
-            original_owner: offer.from_user,
-            letgo_method: originalItem.letgo_method,
-          })
-          .select()
-          .single();
-
-        if (itemError) {
-          console.error("Error creating item:", itemError);
-          throw itemError;
-        }
-
-        // Navigate to add item page with pre-filled data
-        navigate(
-          `/add?mode=received&itemId=${
-            newItem.id
-          }&title=${encodeURIComponent(
-            originalItem.title
-          )}&giver=${encodeURIComponent(offer.from_user)}`
-        );
+      if (updateError) {
+        console.error("Error updating item ownership:", updateError);
+        throw updateError;
       }
+
+      // Navigate to add page in story mode for the existing item
+      navigate(`/add?mode=story&itemId=${offer.item_id}`);
 
       // Remove from accepted offers list
       setAcceptedOffers((prev) => prev.filter((o) => o.id !== offer.id));
