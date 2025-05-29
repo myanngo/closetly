@@ -131,11 +131,10 @@ const AddItem = () => {
         // Upload image if provided
         const imageUrl = await uploadImage();
 
-        // Insert a new post for the existing item
-        // Fetch previous_owner and current_owner
+        // Fetch previous_owner, current_owner, and original_owner
         const { data: itemData, error: itemFetchError } = await supabase
           .from("items")
-          .select("previous_owner, current_owner")
+          .select("previous_owner, current_owner, original_owner")
           .eq("id", selectedItemId)
           .single();
 
@@ -143,14 +142,23 @@ const AddItem = () => {
           throw new Error("Could not fetch owner info for this item.");
         }
 
-        const { previous_owner, current_owner } = itemData;
+        let giver, receiver;
+        if (itemData.original_owner === username) {
+          // Scenario 1: original owner
+          giver = username;
+          receiver = null;
+        } else {
+          // Scenario 2: received from someone else
+          giver = itemData.previous_owner;
+          receiver = username;
+        }
 
         const { error: insertError } = await supabase.from("posts").insert({
           item_id: selectedItemId,
           story: story.trim(),
           picture: imageUrl,
-          giver: previous_owner,
-          receiver: current_owner,
+          giver,
+          receiver,
         });
 
         if (insertError)
@@ -238,14 +246,39 @@ const AddItem = () => {
       return (
         <div className="add-preview">
           <div className="add-title">Preview your story</div>
-          <Postcard
-            user={`@${username}${item ? ` - ${item.title}` : ""}`}
-            text={story}
-            image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
-            initialLikes={0}
-            hideActions={true}
-            post_id={selectedItemId || 0}
-          />
+          <div
+            style={{
+              color: "#b85c5c",
+              fontFamily: "Manrope",
+              fontSize: "1rem",
+              fontWeight: 500,
+              marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              justifyContent: "center",
+            }}
+          >
+            <span style={{ color: "#222" }}>@{username}</span>
+            <span style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}>
+              {item ? item.title : ""} {item && item.brand && `(${item.brand})`} {item && item.size && `- Size ${item.size}`}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+            <Postcard
+              user={(() => {
+                // For preview, receiver is always the current user
+                return `@${username}`;
+              })()}
+              text={story}
+              image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
+              initialLikes={0}
+              hideActions={true}
+              post_id={selectedItemId || 0}
+              id={"preview"}
+              created_at={new Date().toISOString()}
+            />
+          </div>
         </div>
       );
     } else {
@@ -278,7 +311,10 @@ const AddItem = () => {
             }}
           >
             <Postcard
-              user={`@${username}`}
+              user={(() => {
+                // For preview, receiver is always the current user
+                return `@${username}`;
+              })()}
               text={story}
               image={pictureFile ? URL.createObjectURL(pictureFile) : ""}
               initialLikes={0}
@@ -431,10 +467,10 @@ const AddItem = () => {
               setError("");
               try {
                 const imageUrl = pictureFile ? await uploadImage() : null;
-                // Fetch previous_owner and current_owner
+                // Fetch previous_owner, current_owner, and original_owner
                 const { data: itemData, error: itemFetchError } = await supabase
                   .from("items")
-                  .select("previous_owner, current_owner")
+                  .select("previous_owner, current_owner, original_owner")
                   .eq("id", selectedItemId)
                   .single();
 
@@ -442,7 +478,16 @@ const AddItem = () => {
                   throw new Error("Could not fetch owner info for this item.");
                 }
 
-                const { previous_owner, current_owner } = itemData;
+                let giver, receiver;
+                if (itemData.original_owner === username) {
+                  // Scenario 1: original owner
+                  giver = username;
+                  receiver = null;
+                } else {
+                  // Scenario 2: received from someone else
+                  giver = itemData.previous_owner;
+                  receiver = username;
+                }
 
                 const { error: insertError } = await supabase
                   .from("posts")
@@ -450,8 +495,8 @@ const AddItem = () => {
                     item_id: selectedItemId,
                     story: story.trim(),
                     picture: imageUrl,
-                    giver: previous_owner,
-                    receiver: current_owner,
+                    giver,
+                    receiver,
                   });
 
                 if (insertError)

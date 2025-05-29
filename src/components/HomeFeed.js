@@ -584,11 +584,7 @@ const HomeFeed = () => {
 
             <div style={{ marginBottom: 10 }}>
               <Postcard
-                user={
-                  post.receiver
-                    ? `@${post.giver} → @${post.receiver}`
-                    : `@${post.giver}`
-                }
+                user={post.receiver ? `@${post.receiver}` : `@${post.giver}`}
                 text={post.story || "Received this amazing item!"}
                 image={post.picture}
                 initialLikes={0}

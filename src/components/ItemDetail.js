@@ -373,11 +373,7 @@ const ItemDetail = () => {
             ></span>
           </div>
           <Postcard
-            user={
-              latestStory.receiver
-                ? `@${latestStory.giver} → @${latestStory.receiver}`
-                : `@${latestStory.giver}`
-            }
+            user={latestStory.receiver ? `@${latestStory.receiver}` : `@${latestStory.giver}`}
             text={latestStory.text}
             image={latestStory.photo}
             initialLikes={0}
@@ -439,17 +435,17 @@ const ItemDetail = () => {
       <div className="item-detail-info">
         <div className="item-detail-label">Item Details</div>
         <div>
-          <b>Brand:</b> {item.brand || "Not specified"}
+          <b>Brand:</b> {itemDetails?.brand || "Not specified"}
         </div>
         <div>
-          <b>Size:</b> {item.size || "Not specified"}
+          <b>Size:</b> {itemDetails?.size || "Not specified"}
         </div>
         <div>
-          <b>Wear:</b> {item.wear || "Not specified"}
+          <b>Wear:</b> {itemDetails?.wear || "Not specified"}
         </div>
-        {item.story && (
+        {itemDetails?.story && (
           <div style={{ marginTop: "10px" }}>
-            <b>Original Story:</b> {item.story}
+            <b>Original Story:</b> {itemDetails.story}
           </div>
         )}
       </div>
