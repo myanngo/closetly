@@ -14,6 +14,7 @@ const Postcard = ({
   text,
   image,
   initialLikes = 0,
+  initialComments = 0,
   hideActions = false,
   post_id,
   id,
@@ -22,7 +23,7 @@ const Postcard = ({
   const { user: authUser, username = "" } = useAuth();
   const [liked, setLiked] = useState(false);
   const [likes, setLikes] = useState(initialLikes);
-  const [comments, setComments] = useState([]);
+  const [comments, setComments] = useState(Array(initialComments).fill({}));
   const [newComment, setNewComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);

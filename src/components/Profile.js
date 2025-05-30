@@ -12,6 +12,18 @@ import {
   faMagnifyingGlass,
 } from "@fortawesome/free-solid-svg-icons";
 
+// Event tracking helper
+const trackEvent = (category, action, label = null, value = null) => {
+  if (window.gtag) {
+    window.gtag('event', action, {
+      event_category: category,
+      event_label: label,
+      value: value,
+      non_interaction: false
+    });
+  }
+};
+
 const Profile = () => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -46,6 +58,9 @@ const Profile = () => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
+        // Track profile view
+        trackEvent('ProfileView', 'Profile_Load', `Loading profile for user ${username || 'Unknown'}`);
+        
         const {
           data: { user },
           error: userError,
@@ -91,7 +106,9 @@ const Profile = () => {
         const { count: storiesCount } = await supabase
           .from("posts")
           .select("id", { count: "exact", head: true })
-          .eq("giver", userData.username);
+          .or(
+            `and(giver.eq.${userData.username},receiver.is.null),receiver.eq.${userData.username}`
+          );
         setNumStories(storiesCount || 0);
 
         // 3. Style suggestions (comments by this user)
@@ -169,7 +186,15 @@ const Profile = () => {
           }
         }
         setCurrentItems(itemsWithPics || []);
+
+        // Track profile stats
+        trackEvent('ProfileStats', 'Stats_Loaded', `Profile stats loaded: ${numSwaps} swaps, ${numStories} stories, ${numSuggestions} suggestions`);
+        
+        // Track items loaded
+        trackEvent('ProfileItems', 'Items_Loaded', `Loaded ${currentItems.length} items for user ${username}`);
+        
       } catch (err) {
+        trackEvent('ProfileError', 'Profile_Load_Error', `Error loading profile: ${err.message}`);
         console.error("Error in fetchUserData:", err);
         setError("An unexpected error occurred");
       } finally {
@@ -188,16 +213,23 @@ const Profile = () => {
   };
 
   const handleItemClick = (item) => {
+    trackEvent('ProfileInteraction', 'Item_Click', `Clicked on item ${item.id} (${item.title})`);
     navigate(`/item/${item.id}`);
   };
 
   const handleBioSave = async () => {
+    trackEvent('ProfileEdit', 'Bio_Update', `Updated bio for user ${username}`);
     setEditing(false);
     setBio(newBio);
     await supabase
       .from("users")
       .update({ bio: newBio })
       .eq("username", username);
+  };
+
+  const handleLogout = async () => {
+    trackEvent('UserAction', 'Logout', `User ${username} logged out`);
+    await logOut();
   };
 
   // Friend search modal logic
@@ -247,6 +279,7 @@ const Profile = () => {
   };
 
   const handleSendFriendRequest = async (friendUsername) => {
+    trackEvent('FriendAction', 'Friend_Request_Sent', `Sent friend request to ${friendUsername}`);
     try {
       const { error } = await supabase.from("friend_requests").insert({
         from_username: username,
@@ -270,6 +303,7 @@ const Profile = () => {
   };
 
   const handleAcceptRequest = async (requestId, fromUsername) => {
+    trackEvent('FriendAction', 'Friend_Request_Accepted', `Accepted friend request from ${fromUsername}`);
     try {
       console.log("Accepting friend request from:", fromUsername);
 
@@ -345,7 +379,8 @@ const Profile = () => {
     }
   };
 
-  const handleRejectRequest = async (requestId) => {
+  const handleRejectRequest = async (requestId, fromUsername) => {
+    trackEvent('FriendAction', 'Friend_Request_Rejected', `Rejected friend request from ${fromUsername}`);
     try {
       const { error } = await supabase
         .from("friend_requests")
@@ -362,6 +397,7 @@ const Profile = () => {
   };
 
   const handleBlockUser = async (usernameToBlock) => {
+    trackEvent('UserAction', 'User_Blocked', `Blocked user ${usernameToBlock}`);
     try {
       // Add to blocked users
       const newBlockedUsers = [...blockedUsers, usernameToBlock];
@@ -439,7 +475,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="profile-page">
+    <div className="profile-page" style={{ paddingBottom: 150 }}>
       {/* Logout icon in upper right */}
       <button
         className="logout-icon-btn"
@@ -452,7 +488,7 @@ const Profile = () => {
           cursor: "pointer",
           fontSize: 23,
         }}
-        onClick={logOut}
+        onClick={handleLogout}
         title="Log out"
       >
         <FontAwesomeIcon icon={faSignOutAlt} color="#ff3b3f" />
@@ -539,12 +575,15 @@ const Profile = () => {
               onClick={() => setShowFriendManagementModal(true)}
               style={{
                 background: "none",
-                border: "none",
+                border: "#ccc solid 1px",
+                borderRadius: 30,
+                padding: "5px 20px 5px 20px",
                 color: "#666",
                 cursor: "pointer",
-                fontSize: "0.9em",
+                fontSize: "0.75em",
                 display: "flex",
                 alignItems: "center",
+                fontFamily: "Manrope",
                 gap: 4,
               }}
             >
@@ -580,13 +619,13 @@ const Profile = () => {
                   width: 50,
                   height: 50,
                   borderRadius: "50%",
-                  background: "#eee",
+                  background: "#ffd6d6",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   fontWeight: 600,
                   fontSize: 18,
-                  color: "#666",
+                  color: "#ff3b3f",
                   border: "2px solid #fff",
                   boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
                 }}
@@ -808,20 +847,20 @@ const Profile = () => {
                           color: "white",
                           border: "none",
                           padding: "8px 16px",
-                          borderRadius: 4,
+                          borderRadius: 30,
                           cursor: "pointer",
                         }}
                       >
                         Accept
                       </button>
                       <button
-                        onClick={() => handleRejectRequest(request.id)}
+                        onClick={() => handleRejectRequest(request.id, request.from_username)}
                         style={{
                           background: "#f44336",
                           color: "white",
                           border: "none",
                           padding: "8px 16px",
-                          borderRadius: 4,
+                          borderRadius: 30,
                           cursor: "pointer",
                         }}
                       >
@@ -992,8 +1031,9 @@ const Profile = () => {
                         color: "white",
                         border: "none",
                         padding: "8px 16px",
-                        borderRadius: 4,
+                        borderRadius: 30,
                         cursor: "pointer",
+                        fontFamily: "Manrope",
                       }}
                     >
                       Remove
@@ -1005,8 +1045,9 @@ const Profile = () => {
                         color: "white",
                         border: "none",
                         padding: "8px 16px",
-                        borderRadius: 4,
+                        borderRadius: 30,
                         cursor: "pointer",
+                        fontFamily: "Manrope",
                       }}
                     >
                       Block

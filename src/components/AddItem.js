@@ -7,6 +7,18 @@ import { faPlus, faPen, faArrowLeft } from "@fortawesome/free-solid-svg-icons";
 import clothesHanger from "../assets/clothesonhanger.png";
 import Postcard from "./Postcard";
 
+// Event tracking helper
+const trackEvent = (category, action, label = null, value = null) => {
+  if (window.gtag) {
+    window.gtag('event', action, {
+      event_category: category,
+      event_label: label,
+      value: value,
+      non_interaction: false
+    });
+  }
+};
+
 const AddItem = () => {
   const [title, setTitle] = useState("");
   const [story, setStory] = useState("");
@@ -31,11 +43,14 @@ const AddItem = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
+        trackEvent('AddItem', 'Page_Load', 'Add item page loaded');
+        
         const {
           data: { user },
         } = await supabase.auth.getUser();
 
         if (!user) {
+          trackEvent('AddItem', 'Auth_Error', 'User not logged in');
           setError("You must be logged in to post items");
           return;
         }
@@ -47,13 +62,18 @@ const AddItem = () => {
           .single();
 
         if (error) {
+          trackEvent('AddItem', 'User_Data_Error', `Error fetching username: ${error.message}`);
           console.error("Error fetching username:", error);
           setError("Error loading user data");
           return;
         }
 
-        if (data) setUsername(data.username);
+        if (data) {
+          setUsername(data.username);
+          trackEvent('AddItem', 'User_Data_Loaded', `Loaded data for user ${data.username}`);
+        }
       } catch (err) {
+        trackEvent('AddItem', 'Unexpected_Error', `Error in fetchUser: ${err.message}`);
         console.error("Error in fetchUser:", err);
         setError("Failed to load user information");
       }
@@ -144,18 +164,44 @@ const AddItem = () => {
     }
   };
 
+  // Track mode selection
+  const handleModeSelect = (selectedMode) => {
+    trackEvent('AddItem', 'Mode_Select', `Selected ${selectedMode} mode`);
+    setMode(selectedMode);
+    setStep(1);
+  };
+
+  // Track item selection in story mode
+  const handleItemSelect = (itemId) => {
+    const selectedItem = userItems.find(item => item.id === itemId);
+    trackEvent('AddItem', 'Item_Select', `Selected item ${itemId} (${selectedItem?.title || 'Unknown'})`);
+    setSelectedItemId(itemId);
+  };
+
+  // Track image upload
+  const handleImageUpload = (file) => {
+    trackEvent('AddItem', 'Image_Upload', `Uploaded image: ${file.name}`);
+    setPictureFile(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+    trackEvent('AddItem', 'Submit_Initiated', `Started submitting ${mode} item`);
 
     try {
       if (mode === "story") {
         if (!selectedItemId) throw new Error("Please select an item");
         if (!story.trim()) throw new Error("Story is required");
 
+        trackEvent('AddItem', 'Story_Submit', `Submitting story for item ${selectedItemId}`);
+
         // Upload image if provided
         const imageUrl = await uploadImage();
+        if (imageUrl) {
+          trackEvent('AddItem', 'Image_Upload_Success', `Successfully uploaded image for item ${selectedItemId}`);
+        }
 
         // Fetch previous_owner, current_owner, and original_owner
         const { data: itemData, error: itemFetchError } = await supabase
@@ -199,6 +245,7 @@ const AddItem = () => {
         // If this post was created from an offer, update the offer status
         await updateOfferStatus();
 
+        trackEvent('AddItem', 'Story_Success', `Successfully added story for item ${selectedItemId}`);
         navigate("/");
         return;
       }
@@ -210,7 +257,11 @@ const AddItem = () => {
           "User information not loaded. Please refresh and try again."
         );
 
+      // Upload image if provided
       const imageUrl = await uploadImage();
+      if (imageUrl) {
+        trackEvent('AddItem', 'Image_Upload_Success', 'Successfully uploaded image for new item');
+      }
 
       // First create the item entry
       const { data: itemData, error: itemError } = await supabase
@@ -270,11 +321,46 @@ const AddItem = () => {
       await updateOfferStatus();
 
       console.log("Successfully created item and post:", itemData);
+      trackEvent('AddItem', 'NewItem_Success', `Successfully created new item: ${title}`);
       navigate("/");
     } catch (err) {
+      trackEvent('AddItem', 'Submit_Error', `Error submitting ${mode} item: ${err.message}`);
       setError(err.message || "An error occurred while creating your post");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Track step navigation
+  const handleStepChange = (newStep) => {
+    trackEvent('AddItem', 'Step_Change', `Changed from step ${step} to ${newStep}`);
+    setStep(newStep);
+  };
+
+  // Track form field changes
+  const handleFieldChange = (field, value) => {
+    trackEvent('AddItem', 'Field_Change', `Changed ${field} field`);
+    switch (field) {
+      case 'title':
+        setTitle(value);
+        break;
+      case 'story':
+        setStory(value);
+        break;
+      case 'itemType':
+        setItemType(value);
+        break;
+      case 'size':
+        setSize(value);
+        break;
+      case 'brand':
+        setBrand(value);
+        break;
+      case 'wear':
+        setWear(value);
+        break;
+      default:
+        break;
     }
   };
 
@@ -405,10 +491,7 @@ const AddItem = () => {
           <button
             className="add-btn add-select-btn"
             style={{ fontSize: "1rem" }}
-            onClick={() => {
-              setMode("new");
-              setStep(1);
-            }}
+            onClick={() => handleModeSelect("new")}
           >
             <FontAwesomeIcon icon={faPlus} style={{ marginRight: 10 }} />
             Add a new item
@@ -416,10 +499,7 @@ const AddItem = () => {
           <button
             className="add-btn add-select-btn"
             style={{ fontSize: "1rem", background: "#222", color: "#fff" }}
-            onClick={() => {
-              setMode("story");
-              setStep(1);
-            }}
+            onClick={() => handleModeSelect("story")}
           >
             <FontAwesomeIcon icon={faPen} style={{ marginRight: 10 }} />
             Add a story to an existing item
@@ -437,7 +517,7 @@ const AddItem = () => {
           <button
             className="add-back-btn"
             type="button"
-            onClick={() => setStep(0)}
+            onClick={() => handleStepChange(0)}
           >
             <FontAwesomeIcon icon={faArrowLeft} />
           </button>
@@ -447,14 +527,14 @@ const AddItem = () => {
             className="add-form"
             onSubmit={(e) => {
               e.preventDefault();
-              setStep(2);
+              handleStepChange(2);
             }}
           >
             <label className="subheader">Select Item</label>
             <select
               className="add-select"
               value={selectedItemId}
-              onChange={(e) => setSelectedItemId(e.target.value)}
+              onChange={(e) => handleItemSelect(e.target.value)}
               required
               disabled={selectedItemId && offerId} // Disable if item is pre-selected from an offer
             >
@@ -471,7 +551,7 @@ const AddItem = () => {
               className="add-textarea"
               placeholder="Tell us a bit more about this piece..."
               value={story}
-              onChange={(e) => setStory(e.target.value)}
+              onChange={(e) => handleFieldChange('story', e.target.value)}
               required
             />
             <div className="picture-upload">
@@ -479,7 +559,7 @@ const AddItem = () => {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => setPictureFile(e.target.files[0])}
+                onChange={(e) => handleImageUpload(e.target.files[0])}
               />
             </div>
             <button
@@ -500,7 +580,7 @@ const AddItem = () => {
           <button
             className="add-back-btn"
             type="button"
-            onClick={() => setStep(1)}
+            onClick={() => handleStepChange(1)}
           >
             <FontAwesomeIcon icon={faArrowLeft} />
           </button>
@@ -508,67 +588,7 @@ const AddItem = () => {
           <button
             className="add-btn"
             style={{ background: "#222", color: "#fff", marginTop: 24 }}
-            onClick={async () => {
-              setLoading(true);
-              setError("");
-              try {
-                const imageUrl = pictureFile ? await uploadImage() : null;
-                // Fetch previous_owner, current_owner, and original_owner
-                const { data: itemData, error: itemFetchError } = await supabase
-                  .from("items")
-                  .select("previous_owner, current_owner, original_owner")
-                  .eq("id", selectedItemId)
-                  .single();
-
-                if (itemFetchError || !itemData) {
-                  throw new Error("Could not fetch owner info for this item.");
-                }
-
-                let giver, receiver;
-                if (itemData.original_owner === username) {
-                  // Scenario 1: original owner
-                  giver = username;
-                  receiver = null;
-                } else {
-                  // Scenario 2: received from someone else
-                  // Use original_owner if previous_owner is null/undefined or same as current user
-                  const actualGiver =
-                    itemData.previous_owner &&
-                    itemData.previous_owner !== username
-                      ? itemData.previous_owner
-                      : itemData.original_owner;
-
-                  giver = actualGiver;
-                  receiver = username;
-                }
-
-                const { error: insertError } = await supabase
-                  .from("posts")
-                  .insert({
-                    item_id: selectedItemId,
-                    story: story.trim(),
-                    picture: imageUrl,
-                    giver,
-                    receiver,
-                  });
-
-                if (insertError)
-                  throw new Error(
-                    "Failed to add story: " + insertError.message
-                  );
-
-                // If this post was created from an offer, update the offer status
-                await updateOfferStatus();
-
-                navigate("/");
-              } catch (err) {
-                setError(
-                  err.message || "An error occurred while creating your post"
-                );
-              } finally {
-                setLoading(false);
-              }
-            }}
+            onClick={handleSubmit}
             disabled={loading}
           >
             {loading ? "posting..." : "post"}
@@ -587,7 +607,7 @@ const AddItem = () => {
           <button
             className="add-back-btn"
             type="button"
-            onClick={() => setStep(0)}
+            onClick={() => handleStepChange(0)}
           >
             <FontAwesomeIcon icon={faArrowLeft} />
           </button>
@@ -597,7 +617,7 @@ const AddItem = () => {
             className="add-form"
             onSubmit={(e) => {
               e.preventDefault();
-              setStep(2);
+              handleStepChange(2);
             }}
           >
             <div className="picture-upload">
@@ -610,7 +630,7 @@ const AddItem = () => {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setPictureFile(e.target.files[0])}
+                  onChange={(e) => handleImageUpload(e.target.files[0])}
                 />
               </label>
               {pictureFile && (
@@ -626,7 +646,7 @@ const AddItem = () => {
               className="add-input"
               placeholder="What is this? White skirt? Denim jeans?"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => handleFieldChange('title', e.target.value)}
               required
             />
             <label className="subheader">Story</label>
@@ -634,7 +654,7 @@ const AddItem = () => {
               className="add-textarea"
               placeholder="Tell a story. What adventures have you been on with this item?"
               value={story}
-              onChange={(e) => setStory(e.target.value)}
+              onChange={(e) => handleFieldChange('story', e.target.value)}
               required
             />
             <button
@@ -660,7 +680,7 @@ const AddItem = () => {
           <button
             className="add-back-btn"
             type="button"
-            onClick={() => setStep(1)}
+            onClick={() => handleStepChange(1)}
           >
             <FontAwesomeIcon icon={faArrowLeft} />
           </button>
@@ -670,14 +690,14 @@ const AddItem = () => {
             className="add-form"
             onSubmit={(e) => {
               e.preventDefault();
-              setStep(3);
+              handleStepChange(3);
             }}
           >
             <label className="subheader">Item Type</label>
             <select
               className="add-select"
               value={itemType}
-              onChange={(e) => setItemType(e.target.value)}
+              onChange={(e) => handleFieldChange('itemType', e.target.value)}
               required
             >
               <option value="">Select</option>
@@ -691,7 +711,7 @@ const AddItem = () => {
               className="add-input"
               placeholder="Enter Size"
               value={size}
-              onChange={(e) => setSize(e.target.value)}
+              onChange={(e) => handleFieldChange('size', e.target.value)}
               required
             />
             <label className="subheader">Brand</label>
@@ -699,14 +719,14 @@ const AddItem = () => {
               className="add-input"
               placeholder="Enter Brand Name"
               value={brand}
-              onChange={(e) => setBrand(e.target.value)}
+              onChange={(e) => handleFieldChange('brand', e.target.value)}
               required
             />
             <label className="subheader">Wear</label>
             <select
               className="add-select"
               value={wear}
-              onChange={(e) => setWear(e.target.value)}
+              onChange={(e) => handleFieldChange('wear', e.target.value)}
               required
             >
               <option value="">Select</option>
@@ -764,7 +784,7 @@ const AddItem = () => {
           <button
             className="add-back-btn"
             type="button"
-            onClick={() => setStep(2)}
+            onClick={() => handleStepChange(2)}
           >
             <FontAwesomeIcon icon={faArrowLeft} />
           </button>
@@ -778,89 +798,7 @@ const AddItem = () => {
               width: "20%",
               alignSelf: "center",
             }}
-            onClick={async () => {
-              setLoading(true);
-              setError("");
-              try {
-                const imageUrl = pictureFile ? await uploadImage() : null;
-
-                // First create the item entry
-                const { data: itemData, error: itemError } = await supabase
-                  .from("items")
-                  .insert({
-                    title: title.trim(),
-                    brand: brand.trim(),
-                    size: size.trim(),
-                    wear,
-                    current_owner: username,
-                    original_owner: username,
-                    letgo_method: letgo.map((l) =>
-                      l === "give-away" ? "giveaway" : l
-                    ),
-                  })
-                  .select()
-                  .single();
-
-                if (itemError) {
-                  console.error("Error creating item:", itemError);
-                  throw new Error(
-                    "Failed to create item: " + itemError.message
-                  );
-                }
-
-                // Then create the post with the item's id
-                const { data: postData, error: insertError } = await supabase
-                  .from("posts")
-                  .insert({
-                    story: story.trim(),
-                    picture: imageUrl,
-                    giver: username,
-                    item_id: itemData.id,
-                    letgo_method: letgo.map((l) =>
-                      l === "give-away" ? "giveaway" : l
-                    ),
-                  })
-                  .select()
-                  .single();
-
-                if (insertError) {
-                  console.error("Error creating post:", insertError);
-                  // If post creation fails, we should delete the item to maintain consistency
-                  await supabase.from("items").delete().eq("id", itemData.id);
-                  throw new Error(
-                    "Failed to create post: " + insertError.message
-                  );
-                }
-
-                // Update the item with the latest post id
-                const { error: updateError } = await supabase
-                  .from("items")
-                  .update({ latest_post_id: postData.id })
-                  .eq("id", itemData.id);
-
-                if (updateError) {
-                  console.error("Error updating item:", updateError);
-                  // If update fails, we should clean up both the post and item
-                  await supabase.from("posts").delete().eq("id", postData.id);
-                  await supabase.from("items").delete().eq("id", itemData.id);
-                  throw new Error(
-                    "Failed to update item: " + updateError.message
-                  );
-                }
-
-                // If this post was created from an offer, update the offer status
-                await updateOfferStatus();
-
-                console.log("Successfully created item and post:", itemData);
-                navigate("/");
-              } catch (err) {
-                setError(
-                  err.message || "An error occurred while creating your post"
-                );
-              } finally {
-                setLoading(false);
-              }
-            }}
+            onClick={handleSubmit}
             disabled={loading}
           >
             {loading ? "posting..." : "post"}

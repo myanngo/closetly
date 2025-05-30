@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import "./HomeFeed.css";
 import { useNavigate } from "react-router-dom";
 import Postcard from "./Postcard";
@@ -8,9 +8,44 @@ import {
   faEye,
   faBell,
   faPlus,
+  faStar,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "../config/supabaseClient";
 import logo from "../assets/logo.png";
+
+// Google Analytics initialization
+const GA_TRACKING_ID = 'G-9ZH425SE0M';
+
+// Initialize Google Analytics
+const initGA = () => {
+  const script1 = document.createElement('script');
+  script1.async = true;
+  script1.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`;
+  
+  const script2 = document.createElement('script');
+  script2.innerHTML = `
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', '${GA_TRACKING_ID}');
+  `;
+  
+  document.head.appendChild(script1);
+  document.head.appendChild(script2);
+};
+
+// Event tracking helper with more descriptive categories
+const trackEvent = (category, action, label = null, value = null) => {
+  if (window.gtag) {
+    window.gtag('event', action, {
+      event_category: category,
+      event_label: label,
+      value: value,
+      non_interaction: false
+    });
+  }
+};
 
 const HomeFeed = () => {
   const navigate = useNavigate();
@@ -30,6 +65,290 @@ const HomeFeed = () => {
   const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false);
   const [markCompleteContact, setMarkCompleteContact] = useState(null);
   const [itemTitles, setItemTitles] = useState({});
+  const [feedSort, setFeedSort] = useState("ranked");
+  const [friendsSort, setFriendsSort] = useState("chronological");
+
+  // Initialize GA on component mount
+  useEffect(() => {
+    initGA();
+    // Track initial page view
+    trackEvent('PageView', 'HomeFeed_Load', 'Initial Load');
+  }, []);
+
+  // Track feed view on component mount with more context
+  useEffect(() => {
+    trackEvent('FeedView', `FeedView_${feed}`, `Viewing ${feed} feed with ${feed === 'all' ? allPosts.length : friendsPosts.length} posts`);
+  }, [feed, allPosts.length, friendsPosts.length]);
+
+  // Track feed toggle with more context
+  const handleFeedToggle = (newFeed) => {
+    setFeed(newFeed);
+    trackEvent('FeedNavigation', 'FeedType_Switch', `Switched from ${feed} to ${newFeed} feed`);
+  };
+
+  // Track feed sort change with more context
+  const handleFeedSort = (newSort) => {
+    setFeedSort(newSort);
+    trackEvent('FeedNavigation', 'SortOrder_Change', `Changed sort from ${feedSort} to ${newSort}`);
+  };
+
+  // Track item view with more context
+  const handleViewItem = (post) => {
+    trackEvent('ItemInteraction', 'ItemDetail_View', `Viewed details for item ${post.item_id} (${itemTitles[post.item_id] || 'Untitled'})`);
+    navigate(`/item/${post.item_id}`);
+  };
+
+  // Track history view with more context
+  const handleViewHistory = (post) => {
+    trackEvent('ItemInteraction', 'ItemHistory_View', `Viewed history for item ${post.item_id} (${itemTitles[post.item_id] || 'Untitled'})`);
+    navigate(`/item/${post.item_id}/history`);
+  };
+
+  // Track offer actions with more context
+  const handleAcceptOffer = async (offer) => {
+    trackEvent('OfferManagement', 'Offer_Accept', `Accepted offer ${offer.id} for item ${offer.item?.title || 'Untitled'}`);
+    setOfferActionLoading(offer.id);
+    setOfferActionError("");
+    try {
+      // Accept this offer and mark post_created as false initially
+      const { error: acceptError } = await supabase
+        .from("offers")
+        .update({ status: "accepted", post_created: false })
+        .eq("id", offer.id);
+
+      if (acceptError) throw acceptError;
+
+      // Reject all other pending offers for this item
+      await supabase
+        .from("offers")
+        .update({ status: "rejected" })
+        .eq("item_id", offer.item_id)
+        .neq("id", offer.id)
+        .eq("status", "pending");
+
+      // Update the current_owner of the item
+      // Fetch the current owner before updating
+      const { data: itemData, error: fetchError } = await supabase
+        .from("items")
+        .select("current_owner")
+        .eq("id", offer.item_id)
+        .single();
+
+      if (fetchError || !itemData) {
+        throw new Error("Could not fetch current owner for this item.");
+      }
+
+      const currentOwner = itemData.current_owner;
+      const newOwner = offer.from_user;
+
+      // Update both previous_owner and current_owner
+      const { error: updateItemError } = await supabase
+        .from("items")
+        .update({
+          previous_owner: currentOwner,
+          current_owner: newOwner,
+        })
+        .eq("id", offer.item_id);
+
+      if (updateItemError) {
+        console.error("Error updating item ownership:", updateItemError);
+        throw updateItemError;
+      }
+
+      // Show contact information
+      setMarkCompleteContact({
+        userName: offer.from_user,
+      });
+      setShowMarkCompleteModal(true);
+
+      // Move offer from pending to accepted
+      setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
+
+      // Refresh the pending offers list to reflect the rejected offers
+      const { data: updatedOffers, error: offersFetchError } = await supabase
+        .from("offers")
+        .select("*")
+        .eq("to_user", currentUser.username)
+        .eq("status", "pending");
+
+      if (!offersFetchError && updatedOffers) {
+        // Fetch items for the updated offers
+        const offersWithItems = await Promise.all(
+          updatedOffers.map(async (updatedOffer) => {
+            const { data: item, error: itemError } = await supabase
+              .from("items")
+              .select(
+                "id, title, brand, size, wear, current_owner, original_owner"
+              )
+              .eq("id", updatedOffer.item_id)
+              .single();
+
+            if (itemError) {
+              console.error("Error fetching item:", itemError);
+              return { ...updatedOffer, item: null };
+            }
+
+            return { ...updatedOffer, item };
+          })
+        );
+
+        setPendingOffers(offersWithItems);
+      }
+
+      setAcceptedOffers((prev) => [
+        ...prev,
+        { ...offer, status: "accepted", post_created: false },
+      ]);
+    } catch (err) {
+      trackEvent('OfferManagement', 'Offer_Accept_Error', `Failed to accept offer ${offer.id} for item ${offer.item?.title || 'Untitled'}`);
+      console.error("Error accepting offer:", err);
+      setOfferActionError("Failed to accept offer. Please try again.");
+    } finally {
+      setOfferActionLoading(null);
+    }
+  };
+
+  const handleRejectOffer = async (offer) => {
+    trackEvent('OfferManagement', 'Offer_Reject', `Rejected offer ${offer.id} for item ${offer.item?.title || 'Untitled'}`);
+    setOfferActionLoading(offer.id);
+    setOfferActionError("");
+    try {
+      const { error } = await supabase
+        .from("offers")
+        .update({ status: "rejected" })
+        .eq("id", offer.id);
+
+      if (error) throw error;
+
+      setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
+    } catch (err) {
+      trackEvent('OfferManagement', 'Offer_Reject_Error', `Failed to reject offer ${offer.id} for item ${offer.item?.title || 'Untitled'}`);
+      console.error("Error rejecting offer:", err);
+      setOfferActionError("Failed to reject offer. Please try again.");
+    } finally {
+      setOfferActionLoading(null);
+    }
+  };
+
+  const handleCreatePost = async (offer) => {
+    trackEvent('PostCreation', 'Post_Create_Initiated', `Started creating post for offer ${offer.id} (${offer.item?.title || 'Untitled'})`);
+    try {
+      if (offer.offer_type === "swap") {
+        // First check if posts exist for both items
+        const { data: existingPosts, error: postsCheckError } = await supabase
+          .from("posts")
+          .select("id, item_id")
+          .in("item_id", [offer.item_id, offer.offered_item_id])
+          .eq("giver", currentUser.username);
+
+        if (postsCheckError) {
+          console.error("Error checking for existing posts:", postsCheckError);
+          throw postsCheckError;
+        }
+
+        if (existingPosts && existingPosts.length === 2) {
+          // Both posts exist, mark the offer as complete
+          await supabase
+            .from("offers")
+            .update({ post_created: true })
+            .eq("id", offer.id);
+
+          // Update ownership for both items
+          const { error: updateError } = await supabase
+            .from("items")
+            .update({
+              current_owner: offer.to_user,
+            })
+            .in("id", [offer.item_id, offer.offered_item_id]);
+
+          if (updateError) {
+            console.error("Error updating item ownership:", updateError);
+            throw updateError;
+          }
+
+          // Remove from accepted offers list
+          setAcceptedOffers((prev) => prev.filter((o) => o.id !== offer.id));
+          trackEvent('PostCreation', 'Post_Create_Swap', `Creating swap post for items ${offer.item_id} and ${offer.offered_item_id}`);
+        } else {
+          // Navigate to add page in story mode for the items that don't have posts
+          const itemsWithoutPosts = [
+            offer.item_id,
+            offer.offered_item_id,
+          ].filter(
+            (itemId) => !existingPosts?.some((post) => post.item_id === itemId)
+          );
+
+          navigate(
+            `/add?mode=story&itemId=${itemsWithoutPosts[0]}&offerId=${offer.id}`
+          );
+        }
+      } else {
+        // For non-swap offers: transfer item to user, then navigate to add page
+        // Fetch the current owner first (before any update)
+        const { data: itemData, error: fetchError } = await supabase
+          .from("items")
+          .select("current_owner")
+          .eq("id", offer.item_id)
+          .single();
+        if (fetchError || !itemData) {
+          throw new Error("Could not fetch current owner for this item.");
+        }
+        const previousOwner = itemData.current_owner;
+        // Now update both fields using the value you just fetched
+        await supabase
+          .from("items")
+          .update({
+            previous_owner: previousOwner,
+            current_owner: currentUser.username,
+          })
+          .eq("id", offer.item_id);
+
+        navigate(`/add?mode=story&itemId=${offer.item_id}&offerId=${offer.id}`);
+        trackEvent('PostCreation', 'Post_Create_Standard', `Creating standard post for item ${offer.item_id}`);
+      }
+    } catch (err) {
+      trackEvent('PostCreation', 'Post_Create_Error', `Failed to create post for offer ${offer.id}`);
+      console.error("Error creating post:", err);
+      setOfferActionError("Failed to create post. Please try again.");
+    }
+  };
+
+  // Track modal interactions with more context
+  const handleShowOffersModal = (show) => {
+    setShowOffersModal(show);
+    trackEvent('ModalInteraction', show ? 'Modal_Open' : 'Modal_Close', `Offers modal ${show ? 'opened' : 'closed'} with ${totalOffers} total offers`);
+  };
+
+  const handleShowContactModal = (show) => {
+    setShowContactModal(show);
+    trackEvent('ModalInteraction', show ? 'Modal_Open' : 'Modal_Close', `Contact modal ${show ? 'opened' : 'closed'} for user ${selectedContact?.userName || 'Unknown'}`);
+  };
+
+  const handleShowMarkCompleteModal = (show) => {
+    setShowMarkCompleteModal(show);
+    trackEvent('ModalInteraction', show ? 'Modal_Open' : 'Modal_Close', `Mark complete modal ${show ? 'opened' : 'closed'} for user ${markCompleteContact?.userName || 'Unknown'}`);
+  };
+
+  // Track post interactions
+  const handlePostInteraction = (post, action) => {
+    trackEvent('PostInteraction', `Post_${action}`, `User performed ${action} on post ${post.id} for item ${itemTitles[post.item_id] || 'Untitled'}`);
+  };
+
+  // Track profile navigation
+  const handleProfileNavigation = (username) => {
+    trackEvent('Navigation', 'Profile_View', `Navigating to profile of user ${username}`);
+    navigate(`/profile/${username}`);
+  };
+
+  // Track item detail interactions
+  const handleItemDetailInteraction = (itemId, action) => {
+    trackEvent('ItemDetail', `Item_${action}`, `User performed ${action} on item ${itemId} (${itemTitles[itemId] || 'Untitled'})`);
+  };
+
+  // Track item history interactions
+  const handleItemHistoryInteraction = (itemId, action) => {
+    trackEvent('ItemHistory', `History_${action}`, `User performed ${action} on history of item ${itemId} (${itemTitles[itemId] || 'Untitled'})`);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -75,12 +394,38 @@ const HomeFeed = () => {
           return;
         }
 
-        setAllPosts(allPostsData || []);
+        // Fetch likes and comments counts for each post
+        const postsWithCounts = await Promise.all(
+          (allPostsData || []).map(async (post) => {
+            // Likes count
+            const { count: likesCount, error: likesError } = await supabase
+              .from("likes")
+              .select("id", { count: "exact", head: true })
+              .eq("post_id", post.id);
+            const likes = likesCount ?? 0;
+
+            // Comments count
+            const { count: commentsCount, error: commentsError } =
+              await supabase
+                .from("comments")
+                .select("id", { count: "exact", head: true })
+                .eq("post_id", post.id);
+            const comments_count = commentsCount ?? 0;
+
+            return {
+              ...post,
+              likes,
+              comments_count,
+            };
+          })
+        );
+
+        setAllPosts(postsWithCounts);
 
         // Fetch item titles for all posts
         const itemIds = [
           ...new Set(
-            (allPostsData || []).map((post) => post.item_id).filter(Boolean)
+            (postsWithCounts || []).map((post) => post.item_id).filter(Boolean)
           ),
         ];
         if (itemIds.length > 0) {
@@ -100,7 +445,7 @@ const HomeFeed = () => {
         // Filter friends' posts if user has friends
         if (userData.friends && userData.friends.length > 0) {
           const friendsPostsData =
-            allPostsData?.filter(
+            postsWithCounts?.filter(
               (post) =>
                 userData.friends.includes(post.giver) ||
                 userData.friends.includes(post.receiver)
@@ -251,304 +596,58 @@ const HomeFeed = () => {
     fetchAcceptedOffers();
   }, [showOffersModal, currentUser]);
 
-  // Get the stories to display based on current feed selection
-  const stories = feed === "all" ? allPosts : friendsPosts;
+  // Helper to get likes/comments for ranking
+  const getRankScore = (post) => {
+    const likes = Number(post.likes) || 0;
+    const comments = Number(post.comments_count) || 0;
+    const score = likes + comments;
 
-  const handleViewItem = (post) => {
-    navigate(`/item/${post.item_id}`);
+    return score;
   };
 
-  const handleViewHistory = (post) => {
-    navigate(`/item/${post.item_id}/history`);
-  };
-
-  // Accept offer logic - UPDATED
-  const handleAcceptOffer = async (offer) => {
-    setOfferActionLoading(offer.id);
-    setOfferActionError("");
-    try {
-      // Accept this offer and mark post_created as false initially
-      const { error: acceptError } = await supabase
-        .from("offers")
-        .update({ status: "accepted", post_created: false })
-        .eq("id", offer.id);
-
-      if (acceptError) throw acceptError;
-
-      // Reject all other pending offers for this item
-      await supabase
-        .from("offers")
-        .update({ status: "rejected" })
-        .eq("item_id", offer.item_id)
-        .neq("id", offer.id)
-        .eq("status", "pending");
-
-      // Update the current_owner of the item
-      // Fetch the current owner before updating
-      const { data: itemData, error: fetchError } = await supabase
-        .from("items")
-        .select("current_owner")
-        .eq("id", offer.item_id)
-        .single();
-
-      if (fetchError || !itemData) {
-        throw new Error("Could not fetch current owner for this item.");
-      }
-
-      const currentOwner = itemData.current_owner;
-      const newOwner = offer.from_user;
-
-      // Update both previous_owner and current_owner
-      const { error: updateItemError } = await supabase
-        .from("items")
-        .update({
-          previous_owner: currentOwner,
-          current_owner: newOwner,
-        })
-        .eq("id", offer.item_id);
-
-      if (updateItemError) {
-        console.error("Error updating item ownership:", updateItemError);
-        throw updateItemError;
-      }
-
-      // Show contact information
-      setMarkCompleteContact({
-        userName: offer.from_user,
-      });
-      setShowMarkCompleteModal(true);
-
-      // Move offer from pending to accepted
-      setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
-
-      // Refresh the pending offers list to reflect the rejected offers
-      const { data: updatedOffers, error: offersFetchError } = await supabase
-        .from("offers")
-        .select("*")
-        .eq("to_user", currentUser.username)
-        .eq("status", "pending");
-
-      if (!offersFetchError && updatedOffers) {
-        // Fetch items for the updated offers
-        const offersWithItems = await Promise.all(
-          updatedOffers.map(async (updatedOffer) => {
-            const { data: item, error: itemError } = await supabase
-              .from("items")
-              .select(
-                "id, title, brand, size, wear, current_owner, original_owner"
-              )
-              .eq("id", updatedOffer.item_id)
-              .single();
-
-            if (itemError) {
-              console.error("Error fetching item:", itemError);
-              return { ...updatedOffer, item: null };
-            }
-
-            return { ...updatedOffer, item };
-          })
-        );
-
-        setPendingOffers(offersWithItems);
-      }
-
-      setAcceptedOffers((prev) => [
-        ...prev,
-        { ...offer, status: "accepted", post_created: false },
-      ]);
-    } catch (err) {
-      console.error("Error accepting offer:", err);
-      setOfferActionError("Failed to accept offer. Please try again.");
-    } finally {
-      setOfferActionLoading(null);
-    }
-  };
-
-  // Reject offer logic
-  const handleRejectOffer = async (offer) => {
-    setOfferActionLoading(offer.id);
-    setOfferActionError("");
-    try {
-      const { error } = await supabase
-        .from("offers")
-        .update({ status: "rejected" })
-        .eq("id", offer.id);
-
-      if (error) throw error;
-
-      setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
-    } catch (err) {
-      console.error("Error rejecting offer:", err);
-      setOfferActionError("Failed to reject offer. Please try again.");
-    } finally {
-      setOfferActionLoading(null);
-    }
-  };
-
-  // Handle creating post for accepted offer
-  const handleCreatePost = async (offer) => {
-    try {
-      if (offer.offer_type === "swap") {
-        // First check if posts exist for both items
-        const { data: existingPosts, error: postsCheckError } = await supabase
-          .from("posts")
-          .select("id, item_id")
-          .in("item_id", [offer.item_id, offer.offered_item_id])
-          .eq("giver", currentUser.username);
-
-        if (postsCheckError) {
-          console.error("Error checking for existing posts:", postsCheckError);
-          throw postsCheckError;
-        }
-
-        if (existingPosts && existingPosts.length === 2) {
-          // Both posts exist, mark the offer as complete
-          await supabase
-            .from("offers")
-            .update({ post_created: true })
-            .eq("id", offer.id);
-
-          // Update ownership for both items
-          const { error: updateError } = await supabase
-            .from("items")
-            .update({
-              current_owner: offer.to_user,
-            })
-            .in("id", [offer.item_id, offer.offered_item_id]);
-
-          if (updateError) {
-            console.error("Error updating item ownership:", updateError);
-            throw updateError;
-          }
-
-          // Remove from accepted offers list
-          setAcceptedOffers((prev) => prev.filter((o) => o.id !== offer.id));
-        } else {
-          // Navigate to add page in story mode for the items that don't have posts
-          const itemsWithoutPosts = [
-            offer.item_id,
-            offer.offered_item_id,
-          ].filter(
-            (itemId) => !existingPosts?.some((post) => post.item_id === itemId)
-          );
-
-          navigate(
-            `/add?mode=story&itemId=${itemsWithoutPosts[0]}&offerId=${offer.id}`
-          );
-        }
-      } else {
-        // For non-swap offers: transfer item to user, then navigate to add page
-        // Fetch the current owner first (before any update)
-        const { data: itemData, error: fetchError } = await supabase
-          .from("items")
-          .select("current_owner")
-          .eq("id", offer.item_id)
-          .single();
-        if (fetchError || !itemData) {
-          throw new Error("Could not fetch current owner for this item.");
-        }
-        const previousOwner = itemData.current_owner;
-        // Now update both fields using the value you just fetched
-        await supabase
-          .from("items")
-          .update({
-            previous_owner: previousOwner,
-            current_owner: currentUser.username,
-          })
-          .eq("id", offer.item_id);
-
-        navigate(`/add?mode=story&itemId=${offer.item_id}&offerId=${offer.id}`);
-      }
-    } catch (err) {
-      console.error("Error creating post:", err);
-      setOfferActionError("Failed to create post. Please try again.");
-    }
-  };
-
-  // Listen for successful post creation to update offers
-  useEffect(() => {
-    if (!currentUser) return;
-
-    // Set up real-time subscription to posts table
-    const subscription = supabase
-      .channel("posts_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "posts",
-          filter: `receiver=eq.${currentUser.username}`,
-        },
-        async (payload) => {
-          const newPost = payload.new;
-
-          // Check if this post corresponds to any accepted offers
-          const matchingOffers = acceptedOffers.filter(
-            (offer) => offer.item_id === newPost.item_id
-          );
-
-          if (matchingOffers.length > 0) {
-            // Mark the corresponding offers as post_created = true
-            for (const offer of matchingOffers) {
-              await supabase
-                .from("offers")
-                .update({ post_created: true })
-                .eq("id", offer.id);
-            }
-
-            // Remove these offers from the acceptedOffers state
-            setAcceptedOffers((prev) =>
-              prev.filter(
-                (offer) => !matchingOffers.some((mo) => mo.id === offer.id)
-              )
-            );
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [currentUser, acceptedOffers]);
-
-  // Add this function to check for posts that were created since offers were accepted
+  // Helper to check for completed posts
   const checkForCompletedPosts = async () => {
-    if (!currentUser || acceptedOffers.length === 0) return;
-
     try {
-      // Check each accepted offer to see if a post has been created
-      const updatedOffers = await Promise.all(
-        acceptedOffers.map(async (offer) => {
-          const { data: existingPost } = await supabase
-            .from("posts")
-            .select("id")
-            .eq("item_id", offer.item_id)
-            .eq("receiver", currentUser.username)
-            .gt("created_at", offer.updated_at || offer.created_at)
-            .maybeSingle();
+      // Check for any posts that might have been created since the offers were accepted
+      const { data: postsData, error: postsError } = await supabase
+        .from("posts")
+        .select("id, item_id")
+        .in("item_id", acceptedOffers.map(offer => offer.item_id));
 
-          if (existingPost) {
-            // Post exists, mark offer as complete
-            await supabase
-              .from("offers")
-              .update({ post_created: true })
-              .eq("id", offer.id);
-            return null; // Remove from list
-          }
+      if (postsError) {
+        console.error("Error checking for completed posts:", postsError);
+        return;
+      }
 
-          return offer; // Keep in list
-        })
-      );
-
-      // Update the acceptedOffers state, filtering out completed ones
-      const stillPendingOffers = updatedOffers.filter(Boolean);
-      setAcceptedOffers(stillPendingOffers);
+      // If posts exist for all items, remove those offers from the list
+      if (postsData) {
+        const itemsWithPosts = new Set(postsData.map(post => post.item_id));
+        setAcceptedOffers(prev => prev.filter(offer => !itemsWithPosts.has(offer.item_id)));
+      }
     } catch (err) {
-      console.error("Error checking for completed posts:", err);
+      console.error("Error in checkForCompletedPosts:", err);
     }
   };
+
+  // Debug: log allPosts before sorting
+  console.log("allPosts for ranked feed", allPosts);
+  // Memoize sorted stories for correct and efficient ordering
+  const stories = useMemo(() => {
+    if (feed === "all") {
+      if (feedSort === "ranked") {
+        return [...allPosts].sort((a, b) => getRankScore(b) - getRankScore(a));
+      } else {
+        return [...allPosts].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+      }
+    } else {
+      // Friends feed: always chronological
+      return [...friendsPosts].sort(
+        (a, b) => new Date(b.created_at) - new Date(a.created_at)
+      );
+    }
+  }, [feed, feedSort, allPosts, friendsPosts]);
 
   const totalOffers = pendingOffers.length + acceptedOffers.length;
 
@@ -593,7 +692,7 @@ const HomeFeed = () => {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             className="offers-bell-btn"
-            onClick={() => setShowOffersModal(true)}
+            onClick={() => handleShowOffersModal(true)}
             style={{
               background: "none",
               border: "none",
@@ -633,19 +732,68 @@ const HomeFeed = () => {
       <div className="feed-toggle">
         <button
           className={feed === "all" ? "active" : ""}
-          onClick={() => setFeed("all")}
+          onClick={() => handleFeedToggle("all")}
         >
-          All ({allPosts.length})
+          Feed ({allPosts.length})
         </button>
         <button
           className={feed === "friends" ? "active" : ""}
-          onClick={() => setFeed("friends")}
+          onClick={() => handleFeedToggle("friends")}
         >
           Friends ({friendsPosts.length})
         </button>
       </div>
 
       <h2>View recent swap stories</h2>
+      {/* Feed ranking toggle (only for main feed) */}
+      {feed === "all" && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            margin: "0 0 30px 0",
+            justifyContent: "center",
+          }}
+        >
+          <button
+            onClick={() => handleFeedSort(feedSort === "ranked" ? "chronological" : "ranked")}
+            style={{
+              background: "#fff",
+              border: "1px solid #bbb",
+              borderRadius: 20,
+              padding: "6px 18px",
+              fontWeight: 600,
+              fontFamily: "Manrope",
+              cursor: "pointer",
+              fontSize: "1.2rem",
+              color: "#ff3b3f",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+            title={
+              feedSort === "ranked"
+                ? "Ranked feed (click to switch to chronological)"
+                : "Chronological feed (click to switch to ranked)"
+            }
+            aria-label={
+              feedSort === "ranked"
+                ? "Ranked feed (click to switch to chronological)"
+                : "Chronological feed (click to switch to ranked)"
+            }
+          >
+            <FontAwesomeIcon
+              icon={feedSort === "ranked" ? faStar : faClock}
+              style={{ color: "#bbb", fontSize: "0.8em" }}
+            />
+            <span
+              style={{ fontSize: "0.8rem", color: "#bbb", fontWeight: 600 }}
+            >
+              {feedSort === "ranked" ? "Ranked" : "Chronological"}
+            </span>
+          </button>
+        </div>
+      )}
 
       {stories.length === 0 ? (
         <div
@@ -699,11 +847,16 @@ const HomeFeed = () => {
                 }
                 text={post.story || "Received this amazing item!"}
                 image={post.picture}
-                initialLikes={0}
+                initialLikes={post.likes}
+                initialComments={post.comments_count}
                 hideActions={false}
                 post_id={post.item_id}
                 id={post.id}
                 created_at={post.created_at}
+                onInteraction={(action) => handlePostInteraction(post, action)}
+                onProfileClick={() => handleProfileNavigation(post.giver)}
+                onItemDetailClick={() => handleItemDetailInteraction(post.item_id, 'View')}
+                onHistoryClick={() => handleItemHistoryInteraction(post.item_id, 'View')}
               />
             </div>
 
@@ -724,7 +877,7 @@ const HomeFeed = () => {
         <div
           className="offers-modal-backdrop"
           style={{ zIndex: 1000 }}
-          onClick={() => setShowOffersModal(false)}
+          onClick={() => handleShowOffersModal(false)}
         >
           <div
             className="offers-modal offers-modal-full"
@@ -732,7 +885,7 @@ const HomeFeed = () => {
           >
             <div style={{ position: "relative" }}>
               <button
-                onClick={() => setShowOffersModal(false)}
+                onClick={() => handleShowOffersModal(false)}
                 style={{
                   position: "absolute",
                   right: 0,
@@ -864,7 +1017,7 @@ const HomeFeed = () => {
                             userName: offer.from_user,
                             offerType: offer.offer_type,
                           });
-                          setShowContactModal(true);
+                          handleShowContactModal(true);
                         }}
                       >
                         Contact
@@ -957,8 +1110,16 @@ const HomeFeed = () => {
                         fontFamily: "Manrope",
                       }}
                     >
-                      Your {offer.offer_type} offer for <b>{offer.title || offer.item?.title || ""}</b> was
-                      accepted by <b>@{offer.to_user === currentUser.username ? offer.from_user : offer.to_user}</b>!
+                      Your {offer.offer_type} offer for{" "}
+                      <b>{offer.title || offer.item?.title || ""}</b> was
+                      accepted by{" "}
+                      <b>
+                        @
+                        {offer.to_user === currentUser.username
+                          ? offer.from_user
+                          : offer.to_user}
+                      </b>
+                      !
                     </div>
                     <div
                       style={{
@@ -1014,7 +1175,7 @@ const HomeFeed = () => {
         <div
           className="offers-modal-backdrop"
           style={{ zIndex: 1001 }}
-          onClick={() => setShowContactModal(false)}
+          onClick={() => handleShowContactModal(false)}
         >
           <div
             className="offers-modal"
@@ -1059,7 +1220,7 @@ const HomeFeed = () => {
               </div>
             </div>
             <button
-              onClick={() => setShowContactModal(false)}
+              onClick={() => handleShowContactModal(false)}
               style={{
                 background: "#000",
                 color: "#fff",
@@ -1083,7 +1244,7 @@ const HomeFeed = () => {
         <div
           className="offers-modal-backdrop"
           style={{ zIndex: 1001 }}
-          onClick={() => setShowMarkCompleteModal(false)}
+          onClick={() => handleShowMarkCompleteModal(false)}
         >
           <div
             className="offers-modal"
@@ -1098,7 +1259,7 @@ const HomeFeed = () => {
               <b>@{markCompleteContact.userName}</b> as a new friend!
             </p>
             <button
-              onClick={() => setShowMarkCompleteModal(false)}
+              onClick={() => handleShowMarkCompleteModal(false)}
               style={{
                 background: "#000",
                 color: "#fff",
