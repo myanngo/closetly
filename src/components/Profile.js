@@ -77,9 +77,29 @@ const Profile = () => {
         console.log("User's friends array from database:", userData.friends);
         setFriends(userData.friends || []);
         setBlockedUsers(userData.blocked_users || []);
-        setNumSwaps(userData.num_swaps || 0);
-        setNumStories(userData.num_stories || 0);
-        setNumSuggestions(userData.num_suggestions || 0);
+
+        // Fetch statistics
+        // 1. Swaps made (accepted offers from this user)
+        const { count: swapsCount } = await supabase
+          .from("offers")
+          .select("id", { count: "exact", head: true })
+          .eq("from_user", userData.username)
+          .eq("status", "accepted");
+        setNumSwaps(swapsCount || 0);
+
+        // 2. Stories logged (posts by this user)
+        const { count: storiesCount } = await supabase
+          .from("posts")
+          .select("id", { count: "exact", head: true })
+          .eq("giver", userData.username);
+        setNumStories(storiesCount || 0);
+
+        // 3. Style suggestions (comments by this user)
+        const { count: suggestionsCount } = await supabase
+          .from("comments")
+          .select("id", { count: "exact", head: true })
+          .eq("username", userData.username);
+        setNumSuggestions(suggestionsCount || 0);
 
         // Fetch friend details for the row
         if (userData.friends && userData.friends.length > 0) {
@@ -444,13 +464,12 @@ const Profile = () => {
               width: 64,
               height: 64,
               borderRadius: "50%",
-              background: "#eee",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 600,
               fontSize: 24,
-              color: "#666",
+              color: "#FFFFFF",
             }}
           >
             {getInitials(name)}

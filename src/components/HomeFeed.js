@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import "./HomeFeed.css";
 import { useNavigate } from "react-router-dom";
 import Postcard from "./Postcard";
@@ -7,8 +7,6 @@ import {
   faRetweet,
   faEye,
   faBell,
-  faCheck,
-  faTimes,
   faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import { supabase } from "../config/supabaseClient";
@@ -28,8 +26,9 @@ const HomeFeed = () => {
   const [offerActionLoading, setOfferActionLoading] = useState(null);
   const [offerActionError, setOfferActionError] = useState("");
   const [showContactModal, setShowContactModal] = useState(false);
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState(null);
+  const [showMarkCompleteModal, setShowMarkCompleteModal] = useState(false);
+  const [markCompleteContact, setMarkCompleteContact] = useState(null);
   const [itemTitles, setItemTitles] = useState({});
 
   useEffect(() => {
@@ -126,155 +125,103 @@ const HomeFeed = () => {
     const fetchOffers = async () => {
       if (!currentUser) return;
       try {
-        // First fetch the offers
-        const { data: offers, error: offersError } = await supabase
-          .from("offers")
-          .select("*")
-          .eq("to_user", currentUser.username)
-          .eq("status", "pending");
+        // Fetch pending offers
+        const { data: pendingOffersData, error: pendingOffersError } =
+          await supabase
+            .from("offers")
+            .select("*")
+            .eq("to_user", currentUser.username)
+            .eq("status", "pending");
 
-        if (offersError) {
-          console.error("Error fetching offers:", offersError);
+        if (pendingOffersError) {
+          console.error("Error fetching pending offers:", pendingOffersError);
           setPendingOffers([]);
-          return;
+        } else {
+          // Fetch items for pending offers
+          const pendingOffersWithItems = await Promise.all(
+            (pendingOffersData || []).map(async (offer) => {
+              const { data: item, error: itemError } = await supabase
+                .from("items")
+                .select(
+                  "id, title, brand, size, wear, current_owner, original_owner"
+                )
+                .eq("id", offer.item_id)
+                .single();
+
+              if (itemError) {
+                console.error("Error fetching item:", itemError);
+                return { ...offer, item: null };
+              }
+
+              return { ...offer, item };
+            })
+          );
+          setPendingOffers(pendingOffersWithItems);
         }
 
-        // Then fetch the items for each offer
-        const offersWithItems = await Promise.all(
-          offers.map(async (offer) => {
-            const { data: item, error: itemError } = await supabase
-              .from("items")
-              .select(
-                "id, title, brand, size, wear, current_owner, original_owner"
-              )
-              .eq("id", offer.item_id)
-              .single();
+        // Fetch accepted offers that haven't had posts created yet
+        const { data: acceptedOffersData, error: acceptedOffersError } =
+          await supabase
+            .from("offers")
+            .select("*")
+            .eq("to_user", currentUser.username)
+            .eq("status", "accepted")
+            .eq("post_created", false);
 
-            if (itemError) {
-              console.error("Error fetching item:", itemError);
-              return { ...offer, item: null };
-            }
+        if (acceptedOffersError) {
+          console.error("Error fetching accepted offers:", acceptedOffersError);
+          setAcceptedOffers([]);
+        } else {
+          // Fetch items for accepted offers
+          const acceptedOffersWithItems = await Promise.all(
+            (acceptedOffersData || []).map(async (offer) => {
+              const { data: item, error: itemError } = await supabase
+                .from("items")
+                .select(
+                  "id, title, brand, size, wear, current_owner, original_owner"
+                )
+                .eq("id", offer.item_id)
+                .single();
 
-            return { ...offer, item };
-          })
-        );
+              if (itemError) {
+                console.error("Error fetching item:", itemError);
+                return { ...offer, item: null };
+              }
 
-        setPendingOffers(offersWithItems || []);
+              return { ...offer, item };
+            })
+          );
+          setAcceptedOffers(acceptedOffersWithItems);
+        }
       } catch (err) {
         console.error("Error in fetchOffers:", err);
         setPendingOffers([]);
+        setAcceptedOffers([]);
       }
     };
     fetchOffers();
   }, [currentUser]);
 
-  // Add a new useEffect to check for newly created posts
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const checkForNewPosts = async () => {
-      try {
-        // Get all accepted offers that don't have a post_id yet
-        const { data: offers, error: offersError } = await supabase
-          .from("offers")
-          .select("*")
-          .eq("from_user", currentUser.username)
-          .eq("status", "accepted")
-          .is("post_id", null);
-
-        if (offersError) {
-          console.error("Error fetching offers:", offersError);
-          return;
-        }
-
-        // For each offer, check if a post exists that was created after the offer
-        const updatedOffers = await Promise.all(
-          offers.map(async (offer) => {
-            const { data: post } = await supabase
-              .from("posts")
-              .select("id")
-              .eq("item_id", offer.item_id)
-              .eq("giver", currentUser.username)
-              .gt("created_at", offer.created_at)
-              .maybeSingle();
-
-            if (post) {
-              // Post exists, update the offer with the post_id
-              await supabase
-                .from("offers")
-                .update({ post_id: post.id })
-                .eq("id", offer.id);
-
-              // For swap offers, also check the offered item
-              if (offer.offer_type === "swap" && offer.offered_item_id) {
-                const { data: offeredItemPost } = await supabase
-                  .from("posts")
-                  .select("id")
-                  .eq("item_id", offer.offered_item_id)
-                  .eq("giver", currentUser.username)
-                  .gt("created_at", offer.created_at)
-                  .maybeSingle();
-
-                if (offeredItemPost) {
-                  // Both posts exist, update ownership
-                  await supabase
-                    .from("items")
-                    .update({
-                      current_owner: offer.to_user,
-                    })
-                    .in("id", [offer.item_id, offer.offered_item_id]);
-                }
-              } else {
-                // For non-swap offers, update ownership
-                await supabase
-                  .from("items")
-                  .update({
-                    current_owner: offer.to_user,
-                  })
-                  .eq("id", offer.item_id);
-              }
-
-              return null; // Remove this offer from the list
-            }
-            return offer; // Keep this offer in the list
-          })
-        );
-
-        // Update the accepted offers state with only the offers that don't have posts
-        setAcceptedOffers(updatedOffers.filter(Boolean));
-      } catch (err) {
-        console.error("Error checking for new posts:", err);
-      }
-    };
-
-    // Check for new posts immediately
-    checkForNewPosts();
-
-    // Set up an interval to periodically check for new posts
-    const intervalId = setInterval(checkForNewPosts, 5000); // Check every 5 seconds
-
-    return () => clearInterval(intervalId);
-  }, [currentUser]);
-
-  // Update the fetchAcceptedOffers function in the other useEffect
+  // Refetch accepted offers when the offers modal is opened
   useEffect(() => {
     if (!showOffersModal || !currentUser) return;
+
     const fetchAcceptedOffers = async () => {
       try {
-        // Fetch accepted offers that don't have a post_id yet
+        // Fetch accepted offers that haven't had posts created yet
         const { data: offers, error: offersError } = await supabase
           .from("offers")
           .select("*")
           .eq("from_user", currentUser.username)
           .eq("status", "accepted")
-          .is("post_id", null);
+          .eq("post_created", false);
 
         if (offersError) {
           setAcceptedOffers([]);
           return;
         }
 
-        // For each offer, fetch the item details
+        // Fetch item details for each offer
         const offersWithItems = await Promise.all(
           offers.map(async (offer) => {
             const { data: requestedItem } = await supabase
@@ -291,11 +238,16 @@ const HomeFeed = () => {
             };
           })
         );
-        setAcceptedOffers(offersWithItems.filter(Boolean));
+
+        setAcceptedOffers(offersWithItems);
+
+        // Check for any posts that might have been created since the offers were accepted
+        await checkForCompletedPosts();
       } catch (err) {
         setAcceptedOffers([]);
       }
     };
+
     fetchAcceptedOffers();
   }, [showOffersModal, currentUser]);
 
@@ -310,31 +262,26 @@ const HomeFeed = () => {
     navigate(`/item/${post.item_id}/history`);
   };
 
-  // Accept offer logic
+  // Accept offer logic - UPDATED
   const handleAcceptOffer = async (offer) => {
     setOfferActionLoading(offer.id);
     setOfferActionError("");
     try {
-      // Accept this offer
+      // Accept this offer and mark post_created as false initially
       const { error: acceptError } = await supabase
         .from("offers")
-        .update({ status: "accepted" })
+        .update({ status: "accepted", post_created: false })
         .eq("id", offer.id);
 
       if (acceptError) throw acceptError;
 
       // Reject all other pending offers for this item
-      const { error: rejectError } = await supabase
+      await supabase
         .from("offers")
         .update({ status: "rejected" })
         .eq("item_id", offer.item_id)
         .neq("id", offer.id)
         .eq("status", "pending");
-
-      if (rejectError) {
-        console.error("Error rejecting other offers:", rejectError);
-        throw rejectError;
-      }
 
       // Update the current_owner of the item
       // Fetch the current owner before updating
@@ -365,10 +312,13 @@ const HomeFeed = () => {
         throw updateItemError;
       }
 
-      // Show completion modal instead of contact modal
-      setShowCompletionModal(true);
+      // Show contact information
+      setMarkCompleteContact({
+        userName: offer.from_user,
+      });
+      setShowMarkCompleteModal(true);
 
-      // Remove from pending offers
+      // Move offer from pending to accepted
       setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
 
       // Refresh the pending offers list to reflect the rejected offers
@@ -401,7 +351,13 @@ const HomeFeed = () => {
 
         setPendingOffers(offersWithItems);
       }
+
+      setAcceptedOffers((prev) => [
+        ...prev,
+        { ...offer, status: "accepted", post_created: false },
+      ]);
     } catch (err) {
+      console.error("Error accepting offer:", err);
       setOfferActionError("Failed to accept offer. Please try again.");
     } finally {
       setOfferActionLoading(null);
@@ -422,6 +378,7 @@ const HomeFeed = () => {
 
       setPendingOffers((prev) => prev.filter((o) => o.id !== offer.id));
     } catch (err) {
+      console.error("Error rejecting offer:", err);
       setOfferActionError("Failed to reject offer. Please try again.");
     } finally {
       setOfferActionLoading(null);
@@ -431,7 +388,6 @@ const HomeFeed = () => {
   // Handle creating post for accepted offer
   const handleCreatePost = async (offer) => {
     try {
-      // For swaps, we need to handle both the requested item and the offered item
       if (offer.offer_type === "swap") {
         // First check if posts exist for both items
         const { data: existingPosts, error: postsCheckError } = await supabase
@@ -475,51 +431,122 @@ const HomeFeed = () => {
           ].filter(
             (itemId) => !existingPosts?.some((post) => post.item_id === itemId)
           );
-          navigate(`/add?mode=story&itemId=${itemsWithoutPosts[0]}`);
+
+          navigate(
+            `/add?mode=story&itemId=${itemsWithoutPosts[0]}&offerId=${offer.id}`
+          );
         }
       } else {
-        // Handle non-swap offers (giveaway, lend) as before
-        const { data: existingPost, error: postCheckError } = await supabase
-          .from("posts")
-          .select("id")
-          .eq("item_id", offer.item_id)
-          .eq("giver", currentUser.username)
+        // For non-swap offers: transfer item to user, then navigate to add page
+        // Fetch the current owner first (before any update)
+        const { data: itemData, error: fetchError } = await supabase
+          .from("items")
+          .select("current_owner")
+          .eq("id", offer.item_id)
           .single();
-
-        if (postCheckError && postCheckError.code !== "PGRST116") {
-          console.error("Error checking for existing post:", postCheckError);
-          throw postCheckError;
+        if (fetchError || !itemData) {
+          throw new Error("Could not fetch current owner for this item.");
         }
+        const previousOwner = itemData.current_owner;
+        // Now update both fields using the value you just fetched
+        await supabase
+          .from("items")
+          .update({
+            previous_owner: previousOwner,
+            current_owner: currentUser.username,
+          })
+          .eq("id", offer.item_id);
 
-        if (existingPost) {
-          // Post already exists, just mark the offer as complete
-          await supabase
-            .from("offers")
-            .update({ post_created: true })
-            .eq("id", offer.id);
-
-          // Update the item ownership
-          const { error: updateError } = await supabase
-            .from("items")
-            .update({
-              current_owner: offer.to_user,
-            })
-            .eq("id", offer.item_id);
-
-          if (updateError) {
-            console.error("Error updating item ownership:", updateError);
-            throw updateError;
-          }
-
-          // Remove from accepted offers list
-          setAcceptedOffers((prev) => prev.filter((o) => o.id !== offer.id));
-        } else {
-          // Navigate to add page in story mode for the existing item
-          navigate(`/add?mode=story&itemId=${offer.item_id}`);
-        }
+        navigate(`/add?mode=story&itemId=${offer.item_id}&offerId=${offer.id}`);
       }
     } catch (err) {
+      console.error("Error creating post:", err);
       setOfferActionError("Failed to create post. Please try again.");
+    }
+  };
+
+  // Listen for successful post creation to update offers
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Set up real-time subscription to posts table
+    const subscription = supabase
+      .channel("posts_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "posts",
+          filter: `receiver=eq.${currentUser.username}`,
+        },
+        async (payload) => {
+          const newPost = payload.new;
+
+          // Check if this post corresponds to any accepted offers
+          const matchingOffers = acceptedOffers.filter(
+            (offer) => offer.item_id === newPost.item_id
+          );
+
+          if (matchingOffers.length > 0) {
+            // Mark the corresponding offers as post_created = true
+            for (const offer of matchingOffers) {
+              await supabase
+                .from("offers")
+                .update({ post_created: true })
+                .eq("id", offer.id);
+            }
+
+            // Remove these offers from the acceptedOffers state
+            setAcceptedOffers((prev) =>
+              prev.filter(
+                (offer) => !matchingOffers.some((mo) => mo.id === offer.id)
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [currentUser, acceptedOffers]);
+
+  // Add this function to check for posts that were created since offers were accepted
+  const checkForCompletedPosts = async () => {
+    if (!currentUser || acceptedOffers.length === 0) return;
+
+    try {
+      // Check each accepted offer to see if a post has been created
+      const updatedOffers = await Promise.all(
+        acceptedOffers.map(async (offer) => {
+          const { data: existingPost } = await supabase
+            .from("posts")
+            .select("id")
+            .eq("item_id", offer.item_id)
+            .eq("receiver", currentUser.username)
+            .gt("created_at", offer.updated_at || offer.created_at)
+            .maybeSingle();
+
+          if (existingPost) {
+            // Post exists, mark offer as complete
+            await supabase
+              .from("offers")
+              .update({ post_created: true })
+              .eq("id", offer.id);
+            return null; // Remove from list
+          }
+
+          return offer; // Keep in list
+        })
+      );
+
+      // Update the acceptedOffers state, filtering out completed ones
+      const stillPendingOffers = updatedOffers.filter(Boolean);
+      setAcceptedOffers(stillPendingOffers);
+    } catch (err) {
+      console.error("Error checking for completed posts:", err);
     }
   };
 
@@ -557,7 +584,7 @@ const HomeFeed = () => {
       <div className="home-header-bar">
         <div className="home-header-logo">
           <img
-            src={logo}
+            src={logo || "/placeholder.svg"}
             alt="Closetly logo"
             style={{ height: "2.1rem", width: "auto", display: "block" }}
           />
@@ -665,7 +692,11 @@ const HomeFeed = () => {
 
             <div style={{ marginBottom: 10 }}>
               <Postcard
-                user={post.receiver ? `@${post.receiver}` : `@${post.giver}`}
+                user={
+                  post.receiver
+                    ? `@${post.giver} → @${post.receiver}`
+                    : `@${post.giver}`
+                }
                 text={post.story || "Received this amazing item!"}
                 image={post.picture}
                 initialLikes={0}
@@ -840,6 +871,7 @@ const HomeFeed = () => {
                       </button>
                       <button
                         onClick={() => handleAcceptOffer(offer)}
+                        disabled={offerActionLoading === offer.id}
                         style={{
                           background: "#fff",
                           color: "#c83f3f",
@@ -852,13 +884,20 @@ const HomeFeed = () => {
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
-                          cursor: "pointer",
+                          cursor:
+                            offerActionLoading === offer.id
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity: offerActionLoading === offer.id ? 0.6 : 1,
                         }}
                       >
-                        Mark Complete
+                        {offerActionLoading === offer.id
+                          ? "Processing..."
+                          : "Mark Complete"}
                       </button>
                       <button
                         onClick={() => handleRejectOffer(offer)}
+                        disabled={offerActionLoading === offer.id}
                         style={{
                           background: "#c83f3f",
                           color: "#fff",
@@ -871,10 +910,16 @@ const HomeFeed = () => {
                           display: "flex",
                           alignItems: "center",
                           gap: 6,
-                          cursor: "pointer",
+                          cursor:
+                            offerActionLoading === offer.id
+                              ? "not-allowed"
+                              : "pointer",
+                          opacity: offerActionLoading === offer.id ? 0.6 : 1,
                         }}
                       >
-                        Reject
+                        {offerActionLoading === offer.id
+                          ? "Processing..."
+                          : "Reject"}
                       </button>
                     </div>
                   </div>
@@ -912,8 +957,8 @@ const HomeFeed = () => {
                         fontFamily: "Manrope",
                       }}
                     >
-                      Your {offer.offer_type} offer for <b>{offer.title}</b> was
-                      accepted by <b>@{offer.to_user}</b>!
+                      Your {offer.offer_type} offer for <b>{offer.title || offer.item?.title || ""}</b> was
+                      accepted by <b>@{offer.to_user === currentUser.username ? offer.from_user : offer.to_user}</b>!
                     </div>
                     <div
                       style={{
@@ -976,12 +1021,13 @@ const HomeFeed = () => {
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: "400px" }}
           >
-            <h2 style={{ color: "#2e8b57", marginBottom: 20 }}>
-              Contact to Arrange the Swap!
+            <h2 style={{ color: "#ff3b3f", marginBottom: 20 }}>
+              Contact to Arrange the Meet-up!
             </h2>
             <p style={{ marginBottom: 20, fontFamily: "Manrope" }}>
-              <b>@{selectedContact.userName}</b> can be reached to discuss a{" "}
-              {selectedContact.offerType}:
+              Contact <b>@{selectedContact.userName}</b> to arrange the{" "}
+              {selectedContact.offerType} and find a time and place to meet on
+              campus!
             </p>
             <div
               style={{
@@ -992,14 +1038,20 @@ const HomeFeed = () => {
                 textAlign: "center",
               }}
             >
-              <div style={{ fontWeight: 600, marginBottom: 8 }}>
+              <div
+                style={{
+                  fontWeight: 600,
+                  marginBottom: 8,
+                  fontFamily: "Manrope",
+                }}
+              >
                 {selectedContact.method === "email" ? "Email:" : "Phone:"}
               </div>
               <div
                 style={{
                   fontSize: "1.2rem",
                   color: "#ff3b3f",
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontFamily: "Manrope",
                 }}
               >
@@ -1009,14 +1061,15 @@ const HomeFeed = () => {
             <button
               onClick={() => setShowContactModal(false)}
               style={{
-                background: "#2e8b57",
+                background: "#000",
                 color: "#fff",
                 border: "none",
                 borderRadius: 30,
                 padding: "10px 20px",
                 fontWeight: 500,
                 fontSize: "1rem",
-                width: "40%",
+                width: "50%",
+                fontFamily: "Manrope",
               }}
             >
               Got it!
@@ -1025,57 +1078,37 @@ const HomeFeed = () => {
         </div>
       )}
 
-      {/* Completion Modal */}
-      {showCompletionModal && (
+      {/* Offer Marked Complete Modal - FIXED */}
+      {showMarkCompleteModal && markCompleteContact && (
         <div
           className="offers-modal-backdrop"
           style={{ zIndex: 1001 }}
-          onClick={() => setShowCompletionModal(false)}
+          onClick={() => setShowMarkCompleteModal(false)}
         >
           <div
             className="offers-modal"
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: "400px" }}
           >
-            <h2 style={{ color: "#2e8b57", marginBottom: 20 }}>
-              Your Item Has Been Sent! 🎉
+            <h2 style={{ color: "#ff3b3f", marginBottom: 20 }}>
+              Congrats! Your item has found a new home.
             </h2>
-            <p
-              style={{
-                marginBottom: 20,
-                fontFamily: "Manrope",
-                fontSize: "1.1rem",
-              }}
-            >
-              Congratulations on passing on your item! You've helped create a
-              more sustainable fashion community.
+            <p style={{ marginBottom: 20, fontFamily: "Manrope" }}>
+              Keep up with the current owner by adding{" "}
+              <b>@{markCompleteContact.userName}</b> as a new friend!
             </p>
-            <div
-              style={{
-                background: "#f8f9fa",
-                padding: 20,
-                borderRadius: 8,
-                marginBottom: 20,
-                textAlign: "center",
-              }}
-            >
-              <div
-                style={{ fontSize: "1.2rem", color: "#666", marginBottom: 8 }}
-              >
-                Keep up with the new owner's stories!
-              </div>
-            </div>
             <button
-              onClick={() => setShowCompletionModal(false)}
+              onClick={() => setShowMarkCompleteModal(false)}
               style={{
-                background: "#2e8b57",
+                background: "#000",
                 color: "#fff",
                 border: "none",
                 borderRadius: 30,
                 padding: "10px 20px",
                 fontWeight: 500,
                 fontSize: "1rem",
-                width: "40%",
+                width: "50%",
+                fontFamily: "Manrope",
               }}
             >
               Got it!

@@ -23,6 +23,7 @@ const AddItem = () => {
   const [userItems, setUserItems] = useState([]);
   const [selectedItemId, setSelectedItemId] = useState("");
   const [step, setStep] = useState(0);
+  const [offerId, setOfferId] = useState(null);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,6 +80,11 @@ const AddItem = () => {
     const params = new URLSearchParams(location.search);
     const itemId = params.get("itemId");
     const modeParam = params.get("mode");
+    const offerIdParam = params.get("offerId");
+
+    if (offerIdParam) {
+      setOfferId(offerIdParam);
+    }
 
     if (modeParam === "story" && itemId) {
       // Story mode with pre-selected item
@@ -118,6 +124,26 @@ const AddItem = () => {
     }
   };
 
+  // Update offer status when post is created
+  const updateOfferStatus = async () => {
+    if (!offerId) return;
+
+    try {
+      const { error } = await supabase
+        .from("offers")
+        .update({ post_created: true })
+        .eq("id", offerId);
+
+      if (error) {
+        console.error("Error updating offer status:", error);
+      } else {
+        console.log("Offer marked as complete:", offerId);
+      }
+    } catch (err) {
+      console.error("Error in updateOfferStatus:", err);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -149,7 +175,13 @@ const AddItem = () => {
           receiver = null;
         } else {
           // Scenario 2: received from someone else
-          giver = itemData.previous_owner;
+          // Use original_owner if previous_owner is null/undefined or same as current user
+          const actualGiver =
+            itemData.previous_owner && itemData.previous_owner !== username
+              ? itemData.previous_owner
+              : itemData.original_owner;
+
+          giver = actualGiver;
           receiver = username;
         }
 
@@ -163,6 +195,9 @@ const AddItem = () => {
 
         if (insertError)
           throw new Error("Failed to add story: " + insertError.message);
+
+        // If this post was created from an offer, update the offer status
+        await updateOfferStatus();
 
         navigate("/");
         return;
@@ -231,6 +266,9 @@ const AddItem = () => {
         throw new Error("Failed to update item: " + updateError.message);
       }
 
+      // If this post was created from an offer, update the offer status
+      await updateOfferStatus();
+
       console.log("Successfully created item and post:", itemData);
       navigate("/");
     } catch (err) {
@@ -261,10 +299,17 @@ const AddItem = () => {
           >
             <span style={{ color: "#222" }}>@{username}</span>
             <span style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}>
-              {item ? item.title : ""} {item && item.brand && `(${item.brand})`} {item && item.size && `- Size ${item.size}`}
+              {item ? item.title : ""} {item && item.brand && `(${item.brand})`}{" "}
+              {item && item.size && `- Size ${item.size}`}
             </span>
           </div>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: 24,
+            }}
+          >
             <Postcard
               user={(() => {
                 // For preview, receiver is always the current user
@@ -411,6 +456,7 @@ const AddItem = () => {
               value={selectedItemId}
               onChange={(e) => setSelectedItemId(e.target.value)}
               required
+              disabled={selectedItemId && offerId} // Disable if item is pre-selected from an offer
             >
               <option value="">Choose an item...</option>
               {userItems.map((item) => (
@@ -485,7 +531,14 @@ const AddItem = () => {
                   receiver = null;
                 } else {
                   // Scenario 2: received from someone else
-                  giver = itemData.previous_owner;
+                  // Use original_owner if previous_owner is null/undefined or same as current user
+                  const actualGiver =
+                    itemData.previous_owner &&
+                    itemData.previous_owner !== username
+                      ? itemData.previous_owner
+                      : itemData.original_owner;
+
+                  giver = actualGiver;
                   receiver = username;
                 }
 
@@ -503,6 +556,10 @@ const AddItem = () => {
                   throw new Error(
                     "Failed to add story: " + insertError.message
                   );
+
+                // If this post was created from an offer, update the offer status
+                await updateOfferStatus();
+
                 navigate("/");
               } catch (err) {
                 setError(
@@ -548,7 +605,7 @@ const AddItem = () => {
                 Upload a photo for your story here
                 <br></br>(e.g. an outfit with item)
               </p>
-              <label class="custom-file-upload">
+              <label className="custom-file-upload">
                 Choose a file
                 <input
                   type="file"
@@ -558,7 +615,7 @@ const AddItem = () => {
               </label>
               {pictureFile && (
                 <img
-                  src={URL.createObjectURL(pictureFile)}
+                  src={URL.createObjectURL(pictureFile) || "/placeholder.svg"}
                   alt="preview"
                   className="big-image-preview"
                 />
@@ -790,6 +847,9 @@ const AddItem = () => {
                     "Failed to update item: " + updateError.message
                   );
                 }
+
+                // If this post was created from an offer, update the offer status
+                await updateOfferStatus();
 
                 console.log("Successfully created item and post:", itemData);
                 navigate("/");
