@@ -10,11 +10,11 @@ import Postcard from "./Postcard";
 // Event tracking helper
 const trackEvent = (category, action, label = null, value = null) => {
   if (window.gtag) {
-    window.gtag('event', action, {
+    window.gtag("event", action, {
       event_category: category,
       event_label: label,
       value: value,
-      non_interaction: false
+      non_interaction: false,
     });
   }
 };
@@ -43,14 +43,14 @@ const AddItem = () => {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        trackEvent('AddItem', 'Page_Load', 'Add item page loaded');
-        
+        trackEvent("AddItem", "Page_Load", "Add item page loaded");
+
         const {
           data: { user },
         } = await supabase.auth.getUser();
 
         if (!user) {
-          trackEvent('AddItem', 'Auth_Error', 'User not logged in');
+          trackEvent("AddItem", "Auth_Error", "User not logged in");
           setError("You must be logged in to post items");
           return;
         }
@@ -62,7 +62,11 @@ const AddItem = () => {
           .single();
 
         if (error) {
-          trackEvent('AddItem', 'User_Data_Error', `Error fetching username: ${error.message}`);
+          trackEvent(
+            "AddItem",
+            "User_Data_Error",
+            `Error fetching username: ${error.message}`
+          );
           console.error("Error fetching username:", error);
           setError("Error loading user data");
           return;
@@ -70,10 +74,18 @@ const AddItem = () => {
 
         if (data) {
           setUsername(data.username);
-          trackEvent('AddItem', 'User_Data_Loaded', `Loaded data for user ${data.username}`);
+          trackEvent(
+            "AddItem",
+            "User_Data_Loaded",
+            `Loaded data for user ${data.username}`
+          );
         }
       } catch (err) {
-        trackEvent('AddItem', 'Unexpected_Error', `Error in fetchUser: ${err.message}`);
+        trackEvent(
+          "AddItem",
+          "Unexpected_Error",
+          `Error in fetchUser: ${err.message}`
+        );
         console.error("Error in fetchUser:", err);
         setError("Failed to load user information");
       }
@@ -166,21 +178,25 @@ const AddItem = () => {
 
   // Track mode selection
   const handleModeSelect = (selectedMode) => {
-    trackEvent('AddItem', 'Mode_Select', `Selected ${selectedMode} mode`);
+    trackEvent("AddItem", "Mode_Select", `Selected ${selectedMode} mode`);
     setMode(selectedMode);
     setStep(1);
   };
 
   // Track item selection in story mode
   const handleItemSelect = (itemId) => {
-    const selectedItem = userItems.find(item => item.id === itemId);
-    trackEvent('AddItem', 'Item_Select', `Selected item ${itemId} (${selectedItem?.title || 'Unknown'})`);
+    const selectedItem = userItems.find((item) => item.id === itemId);
+    trackEvent(
+      "AddItem",
+      "Item_Select",
+      `Selected item ${itemId} (${selectedItem?.title || "Unknown"})`
+    );
     setSelectedItemId(itemId);
   };
 
   // Track image upload
   const handleImageUpload = (file) => {
-    trackEvent('AddItem', 'Image_Upload', `Uploaded image: ${file.name}`);
+    trackEvent("AddItem", "Image_Upload", `Uploaded image: ${file.name}`);
     setPictureFile(file);
   };
 
@@ -188,19 +204,31 @@ const AddItem = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
-    trackEvent('AddItem', 'Submit_Initiated', `Started submitting ${mode} item`);
+    trackEvent(
+      "AddItem",
+      "Submit_Initiated",
+      `Started submitting ${mode} item`
+    );
 
     try {
       if (mode === "story") {
         if (!selectedItemId) throw new Error("Please select an item");
         if (!story.trim()) throw new Error("Story is required");
 
-        trackEvent('AddItem', 'Story_Submit', `Submitting story for item ${selectedItemId}`);
+        trackEvent(
+          "AddItem",
+          "Story_Submit",
+          `Submitting story for item ${selectedItemId}`
+        );
 
         // Upload image if provided
         const imageUrl = await uploadImage();
         if (imageUrl) {
-          trackEvent('AddItem', 'Image_Upload_Success', `Successfully uploaded image for item ${selectedItemId}`);
+          trackEvent(
+            "AddItem",
+            "Image_Upload_Success",
+            `Successfully uploaded image for item ${selectedItemId}`
+          );
         }
 
         // Fetch previous_owner, current_owner, and original_owner
@@ -245,7 +273,11 @@ const AddItem = () => {
         // If this post was created from an offer, update the offer status
         await updateOfferStatus();
 
-        trackEvent('AddItem', 'Story_Success', `Successfully added story for item ${selectedItemId}`);
+        trackEvent(
+          "AddItem",
+          "Story_Success",
+          `Successfully added story for item ${selectedItemId}`
+        );
         navigate("/");
         return;
       }
@@ -260,7 +292,11 @@ const AddItem = () => {
       // Upload image if provided
       const imageUrl = await uploadImage();
       if (imageUrl) {
-        trackEvent('AddItem', 'Image_Upload_Success', 'Successfully uploaded image for new item');
+        trackEvent(
+          "AddItem",
+          "Image_Upload_Success",
+          "Successfully uploaded image for new item"
+        );
       }
 
       // First create the item entry
@@ -321,10 +357,18 @@ const AddItem = () => {
       await updateOfferStatus();
 
       console.log("Successfully created item and post:", itemData);
-      trackEvent('AddItem', 'NewItem_Success', `Successfully created new item: ${title}`);
+      trackEvent(
+        "AddItem",
+        "NewItem_Success",
+        `Successfully created new item: ${title}`
+      );
       navigate("/");
     } catch (err) {
-      trackEvent('AddItem', 'Submit_Error', `Error submitting ${mode} item: ${err.message}`);
+      trackEvent(
+        "AddItem",
+        "Submit_Error",
+        `Error submitting ${mode} item: ${err.message}`
+      );
       setError(err.message || "An error occurred while creating your post");
     } finally {
       setLoading(false);
@@ -333,30 +377,34 @@ const AddItem = () => {
 
   // Track step navigation
   const handleStepChange = (newStep) => {
-    trackEvent('AddItem', 'Step_Change', `Changed from step ${step} to ${newStep}`);
+    trackEvent(
+      "AddItem",
+      "Step_Change",
+      `Changed from step ${step} to ${newStep}`
+    );
     setStep(newStep);
   };
 
   // Track form field changes
   const handleFieldChange = (field, value) => {
-    trackEvent('AddItem', 'Field_Change', `Changed ${field} field`);
+    trackEvent("AddItem", "Field_Change", `Changed ${field} field`);
     switch (field) {
-      case 'title':
+      case "title":
         setTitle(value);
         break;
-      case 'story':
+      case "story":
         setStory(value);
         break;
-      case 'itemType':
+      case "itemType":
         setItemType(value);
         break;
-      case 'size':
+      case "size":
         setSize(value);
         break;
-      case 'brand':
+      case "brand":
         setBrand(value);
         break;
-      case 'wear':
+      case "wear":
         setWear(value);
         break;
       default:
@@ -551,7 +599,7 @@ const AddItem = () => {
               className="add-textarea"
               placeholder="Tell us a bit more about this piece..."
               value={story}
-              onChange={(e) => handleFieldChange('story', e.target.value)}
+              onChange={(e) => handleFieldChange("story", e.target.value)}
               required
             />
             <div className="picture-upload">
@@ -646,7 +694,7 @@ const AddItem = () => {
               className="add-input"
               placeholder="What is this? White skirt? Denim jeans?"
               value={title}
-              onChange={(e) => handleFieldChange('title', e.target.value)}
+              onChange={(e) => handleFieldChange("title", e.target.value)}
               required
             />
             <label className="subheader">Story</label>
@@ -654,7 +702,7 @@ const AddItem = () => {
               className="add-textarea"
               placeholder="Tell a story. What adventures have you been on with this item?"
               value={story}
-              onChange={(e) => handleFieldChange('story', e.target.value)}
+              onChange={(e) => handleFieldChange("story", e.target.value)}
               required
             />
             <button
@@ -697,12 +745,13 @@ const AddItem = () => {
             <select
               className="add-select"
               value={itemType}
-              onChange={(e) => handleFieldChange('itemType', e.target.value)}
+              onChange={(e) => handleFieldChange("itemType", e.target.value)}
               required
             >
               <option value="">Select</option>
               <option value="top">Top</option>
               <option value="bottom">Bottom</option>
+              <option value="accessory">Dress</option>
               <option value="shoes">Shoes</option>
               <option value="accessory">Accessory</option>
             </select>
@@ -711,7 +760,7 @@ const AddItem = () => {
               className="add-input"
               placeholder="Enter Size"
               value={size}
-              onChange={(e) => handleFieldChange('size', e.target.value)}
+              onChange={(e) => handleFieldChange("size", e.target.value)}
               required
             />
             <label className="subheader">Brand</label>
@@ -719,14 +768,14 @@ const AddItem = () => {
               className="add-input"
               placeholder="Enter Brand Name"
               value={brand}
-              onChange={(e) => handleFieldChange('brand', e.target.value)}
+              onChange={(e) => handleFieldChange("brand", e.target.value)}
               required
             />
             <label className="subheader">Wear</label>
             <select
               className="add-select"
               value={wear}
-              onChange={(e) => handleFieldChange('wear', e.target.value)}
+              onChange={(e) => handleFieldChange("wear", e.target.value)}
               required
             >
               <option value="">Select</option>
