@@ -23,14 +23,21 @@
   background: transparent;
   text-align: left;
   position: relative;
+  overflow-y: auto;
+  max-height: 100%;
 }
 
 .postcard-v2-user {
   font-family: "Instrument Serif", serif;
   color: #ff3b3f;
-  font-size: 1.08rem;
+  font-size: 1.04rem;
   margin-bottom: 0.4rem;
   text-align: left;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  padding-bottom: 0.4rem;
+  z-index: 1;
 }
 
 .postcard-v2-lines {
@@ -40,11 +47,12 @@
   justify-content: flex-start;
   gap: 0.2rem;
   text-align: left;
+  padding-bottom: 0.5rem;
 }
 
 .postcard-v2-line {
   font-family: "Manrope", Arial, sans-serif;
-  font-size: 0.98rem;
+  font-size: 0.94rem;
   color: #222;
   position: relative;
   min-height: 1.2em;
@@ -60,6 +68,7 @@
   justify-content: stretch;
   background: #f3f0eb;
   border-left: 1.5px dashed #e5e2de;
+  position: relative;
 }
 
 .postcard-v2-img {
@@ -103,8 +112,13 @@
 .postcard-actions {
   display: flex;
   gap: 1rem;
-  margin-top: 0.7rem;
+  margin-top: 0.1rem;
   align-items: center;
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding-top: 0.7rem;
+  z-index: 1;
 }
 
 .postcard-comment-btn {
@@ -269,4 +283,13 @@
 .postcard-comment-btn.active {
   color: #ff3b3f;
   font-weight: bold;
+}
+
+.postcard-v2-scrollable {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 180px;
+  margin-bottom: 0.05rem;
+  margin-top: 0.2rem;
+  /* Adjust max-height as needed for your layout */
 }

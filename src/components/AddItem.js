@@ -433,8 +433,7 @@ const AddItem = () => {
           >
             <span style={{ color: "#222" }}>@{username}</span>
             <span style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}>
-              {item ? item.title : ""} {item && item.brand && `(${item.brand})`}{" "}
-              {item && item.size && `- Size ${item.size}`}
+              {item ? item.title : ""}
             </span>
           </div>
           <div
@@ -479,7 +478,7 @@ const AddItem = () => {
           >
             <span style={{ color: "#222" }}>@{username}</span>
             <span style={{ color: "#d36c6c", fontWeight: 600, marginLeft: 18 }}>
-              {title} {brand && `(${brand})`} {size && `- Size ${size}`}
+              {title}
             </span>
           </div>
           <div

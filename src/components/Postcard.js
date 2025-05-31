@@ -163,12 +163,14 @@ const Postcard = ({
               </span>
             )}
           </span>
-          <div className="postcard-v2-lines">
-            {lines.map((line, idx) => (
-              <div className="postcard-v2-line" key={idx}>
-                <span>{line}</span>
-              </div>
-            ))}
+          <div className="postcard-v2-scrollable">
+            <div className="postcard-v2-lines">
+              {lines.map((line, idx) => (
+                <div className="postcard-v2-line" key={idx}>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
           </div>
           {!hideActions && (
             <div className="postcard-actions">
