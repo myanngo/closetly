@@ -385,8 +385,7 @@ const HomeFeed = () => {
         const { data: allPostsData, error: allPostsError } = await supabase
           .from("posts")
           .select("*")
-          .order("created_at", { ascending: false })
-          .limit(20); // Limit for performance
+          .order("created_at", { ascending: false });
 
         if (allPostsError) {
           console.error("Error fetching all posts:", allPostsError);
